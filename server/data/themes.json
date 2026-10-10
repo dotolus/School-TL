@@ -1,0 +1,47 @@
+{
+  "activeThemeId": "paper",
+  "themes": [
+    {
+      "id": "paper",
+      "name": "Paper (light)",
+      "vars": {
+        "--bg": "#f6f3ec",
+        "--paper": "#fffdf8",
+        "--ink": "#2b2620",
+        "--ink-soft": "#6b6255",
+        "--line": "#c9bfa9",
+        "--accent": "#8a3b2a",
+        "--accent-soft": "#e9dcc9",
+        "--holiday": "#b4791f",
+        "--holiday-bg": "#fbf0da",
+        "--test": "#9c3b3b",
+        "--test-bg": "#f9e4e2",
+        "--notice": "#2e6e8e",
+        "--notice-bg": "#e1eef4",
+        "--project": "#5b4b8a",
+        "--project-bg": "#eae4f5"
+      }
+    },
+    {
+      "id": "dark",
+      "name": "Dark",
+      "vars": {
+        "--bg": "#1b1812",
+        "--paper": "#242019",
+        "--ink": "#ece6d9",
+        "--ink-soft": "#b3a995",
+        "--line": "#4a4336",
+        "--accent": "#e0a67c",
+        "--accent-soft": "#3a2f22",
+        "--holiday": "#e0b35e",
+        "--holiday-bg": "#3a2f1a",
+        "--test": "#e2938c",
+        "--test-bg": "#3a2220",
+        "--notice": "#8fc3dd",
+        "--notice-bg": "#1d2f38",
+        "--project": "#bdabe8",
+        "--project-bg": "#2b2438"
+      }
+    }
+  ]
+}

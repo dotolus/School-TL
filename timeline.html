@@ -1,0 +1,422 @@
+<title>ציר שנת הלימודים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* פריסה: בכל שורה (כותרת חודש / פריט) יש "תא ציר" קבוע-רוחב בצד ימין
+   (קו + חרוז/תגית תאריך) ותוכן לצידו השמאלי. תאי הציר נמתחים (stretch)
+   לגובה השורה אוטומטית, כך שהקו עובר בדיוק לצד כל תאריך בלי חישובי מיקום. */
+:root{
+  --bg: #f6f3ec;
+  --paper: #fffdf8;
+  --ink: #2b2620;
+  --ink-soft: #6b6255;
+  --line: #c9bfa9;
+  --accent: #8a3b2a;      /* דיו אדמדם-חום - קו הציר */
+  --accent-soft: #e9dcc9;
+  --holiday: #b4791f;     /* חג - חרדל/זהב */
+  --holiday-bg: #fbf0da;
+  --test: #9c3b3b;        /* מבחן - אדום לבנים */
+  --test-bg: #f9e4e2;
+  --notice: #2e6e8e;      /* הודעה - כחול-ים */
+  --notice-bg: #e1eef4;
+  --project: #5b4b8a;     /* עבודה גדולה - סגול */
+  --project-bg: #eae4f5;
+  --shadow: 0 1px 2px rgba(43,38,32,.06), 0 6px 18px rgba(43,38,32,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg: #1b1812; --paper: #242019; --ink: #ece6d9; --ink-soft: #b3a995; --line: #4a4336;
+    --accent: #e0a67c; --accent-soft: #3a2f22; --holiday: #e0b35e; --holiday-bg: #3a2f1a;
+    --test: #e2938c; --test-bg: #3a2220; --notice: #8fc3dd; --notice-bg: #1d2f38;
+    --project: #bdabe8; --project-bg: #2b2438;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 22px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg: #1b1812; --paper: #242019; --ink: #ece6d9; --ink-soft: #b3a995; --line: #4a4336;
+  --accent: #e0a67c; --accent-soft: #3a2f22; --holiday: #e0b35e; --holiday-bg: #3a2f1a;
+  --test: #e2938c; --test-bg: #3a2220; --notice: #8fc3dd; --notice-bg: #1d2f38;
+  --project: #bdabe8; --project-bg: #2b2438;
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 22px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box}
+body{
+  direction: rtl;
+  text-align: right;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Assistant', 'Segoe UI', sans-serif;
+  margin: 0;
+  padding-inline: 16px;
+}
+h1,h2,h3{ font-family:'Frank Ruhl Libre', 'David Libre', serif; margin:0; text-wrap:balance; }
+
+.page{ max-width: 920px; margin: 0 auto; padding-block: 28px 64px; }
+
+/* ---------- כותרת עליונה ---------- */
+.masthead{
+  position: relative;
+  padding: 28px 24px 22px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  margin-bottom: 22px;
+}
+.masthead .eyebrow{
+  font-size: .78rem; letter-spacing:.14em; color: var(--accent); font-weight:700;
+  text-transform: uppercase;
+}
+.masthead h1{ font-size: clamp(1.6rem, 4.5vw, 2.3rem); font-weight:900; margin-top:6px; }
+.masthead p.sub{ color:var(--ink-soft); margin-top:8px; font-size:.98rem; max-width:60ch; }
+
+.legend{ display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:18px; }
+.legend .chip{ display:inline-flex; align-items:center; gap:7px; font-size:.82rem; font-weight:600; color:var(--ink-soft); }
+.legend .dot{ width:11px; height:11px; border-radius:3px; flex:none; }
+
+.now-bar{
+  margin-top:18px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap: wrap; background: var(--accent-soft); border-radius:8px; padding:10px 14px;
+}
+.now-bar .label{ font-size:.9rem; color:var(--ink); }
+.now-bar .label b{ color:var(--accent); }
+.now-bar button{
+  font: inherit; font-weight:700; font-size:.85rem; cursor:pointer;
+  background: var(--accent); color: var(--paper); border:none; border-radius:7px; padding:7px 14px;
+}
+.now-bar button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ---------- הציר ---------- */
+.timeline{ margin-top: 8px; }
+.month{ padding-block-end: 30px; }
+.month:last-child{ padding-block-end: 0; }
+
+.month-rows{ display:flex; flex-direction:column; gap:10px; }
+
+.row{ display:flex; align-items:stretch; gap:10px; }
+
+/* תא הציר: רוחב קבוע, הקו עובר במרכזו ונמתח לגובה מלא של השורה */
+.rail-cell{ flex:none; width:58px; position:relative; }
+@media (max-width:480px){ .rail-cell{ width:46px; } }
+
+.rail-cell .seg{
+  position:absolute; right:50%; transform:translateX(50%);
+  width:3px; top:-5px; bottom:-5px; background:var(--line); border-radius:2px; z-index:0;
+}
+.row:first-child .rail-cell .seg{ top:0; }
+.row:last-child .rail-cell .seg{ bottom:0; }
+
+.bead-mark{
+  position:absolute; right:50%; top:2px; transform:translateX(50%);
+  width:24px; height:24px; border-radius:50%; background:var(--paper); border:3px solid var(--line); z-index:1;
+}
+@media (max-width:480px){ .bead-mark{ width:18px; height:18px; border-width:2.5px; } }
+.month.current .bead-mark{ border-color:var(--accent); box-shadow:0 0 0 5px var(--accent-soft); }
+.month.current .bead-mark::after{
+  content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:9px; height:9px; border-radius:50%; background:var(--accent);
+}
+
+/* תגית התאריך הצמודה לקו, לכל פריט */
+.date-tag{
+  position:absolute; right:50%; top:50%; transform:translate(50%,-50%); z-index:1;
+  background:var(--paper); border:1.5px solid var(--line); border-radius:7px;
+  padding:4px 6px; min-width:38px; max-width:72px;
+  font-weight:800; font-size:.76rem; line-height:1.18; text-align:center;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width:480px){ .date-tag{ font-size:.66rem; padding:3px 4px; min-width:32px; max-width:56px; } }
+.row[data-kind="holiday"] .date-tag{ border-color:var(--holiday); color:var(--holiday); }
+.row[data-kind="test"] .date-tag{ border-color:var(--test); color:var(--test); }
+.row[data-kind="notice"] .date-tag{ border-color:var(--notice); color:var(--notice); }
+.row[data-kind="project"] .date-tag{ border-color:var(--project); color:var(--project); }
+
+.month-head-content{ display:flex; align-items:baseline; gap:12px; padding-top:2px; min-width:0; }
+.month-head-content h2{ font-size:1.5rem; font-weight:700; }
+.month-head-content .yr{ font-size:.85rem; color:var(--ink-soft); font-weight:500; }
+.now-pill{
+  font-size:.72rem; font-weight:800; letter-spacing:.04em;
+  background:var(--accent); color:var(--paper); padding:3px 10px; border-radius:999px;
+}
+
+/* כרטיס פריט - <details> נגיש, בלי JS */
+.item{
+  flex:1; min-width:0; background: var(--paper); border:1px solid var(--line); border-radius:9px;
+  box-shadow: var(--shadow); overflow:hidden; align-self:center;
+}
+.row[data-kind="holiday"] .item{ border-inline-start:5px solid var(--holiday); }
+.row[data-kind="test"] .item{ border-inline-start:5px solid var(--test); }
+.row[data-kind="notice"] .item{ border-inline-start:5px solid var(--notice); }
+.row[data-kind="project"] .item{ border-inline-start:5px solid var(--project); }
+
+.item summary{
+  cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px; padding:12px 14px;
+}
+.item summary::-webkit-details-marker{ display:none; }
+.item summary .s-main{ display:flex; flex-direction:column; gap:5px; min-width:0; flex:1; }
+.title-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.kind-badge{ font-size:.7rem; font-weight:800; padding:2px 9px; border-radius:999px; flex:none; }
+.row[data-kind="holiday"] .kind-badge{ background:var(--holiday-bg); color:var(--holiday); }
+.row[data-kind="test"] .kind-badge{ background:var(--test-bg); color:var(--test); }
+.row[data-kind="notice"] .kind-badge{ background:var(--notice-bg); color:var(--notice); }
+.row[data-kind="project"] .kind-badge{ background:var(--project-bg); color:var(--project); }
+
+.item .title{ font-weight:700; font-size:1rem; }
+
+.chev{ flex:none; color:var(--ink-soft); transition: transform .18s ease; }
+.item[open] .chev{ transform: rotate(180deg); }
+
+.item .detail{ padding: 2px 14px 14px; border-top:1px dashed var(--line); margin-top:2px; }
+.detail dl{ display:grid; grid-template-columns: auto 1fr; gap:8px 12px; margin:10px 0 0; }
+.detail dt{ font-size:.78rem; font-weight:700; color:var(--ink-soft); white-space:nowrap; padding-top:2px; }
+.detail dd{ margin:0; font-size:.92rem; min-width:0; }
+.word-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.word-list span{ background: var(--accent-soft); color:var(--ink); font-size:.82rem; padding:2px 9px; border-radius:6px; }
+.links{ display:flex; flex-direction:column; gap:5px; }
+.links a{ color:var(--accent); text-decoration:none; font-weight:600; font-size:.9rem; }
+.links a:hover{ text-decoration:underline; }
+.links .ph{ color:var(--ink-soft); font-weight:500; font-size:.88rem; font-style:normal; }
+
+footer.note{
+  margin-top:26px; font-size:.82rem; color:var(--ink-soft); line-height:1.7;
+  background:var(--paper); border:1px solid var(--line); border-radius:9px; padding:14px 16px;
+}
+footer.note b{ color:var(--ink); }
+footer.note code{ background:var(--accent-soft); padding:1px 5px; border-radius:4px; }
+</style>
+
+<div class="page">
+
+  <div class="masthead">
+    <div class="eyebrow">תשפ״ז · ספטמבר 2026 – אוגוסט 2027</div>
+    <h1>ציר שנת הלימודים</h1>
+    <p class="sub">כל החודשים מ-1 בספטמבר ועד 31 באוגוסט, עם החגים, המבחנים, ההודעות והעבודות הגדולות של השנה. לכל פריט תאריך ברור צמוד לקו הציר, ובתוך הכרטיס — פרטים: עמודים בספר, רשימת מילים או קישורים.</p>
+
+    <div class="legend">
+      <span class="chip"><span class="dot" style="background:var(--holiday)"></span>חג / חופשה</span>
+      <span class="chip"><span class="dot" style="background:var(--test)"></span>מבחן</span>
+      <span class="chip"><span class="dot" style="background:var(--notice)"></span>הודעה</span>
+      <span class="chip"><span class="dot" style="background:var(--project)"></span>עבודה גדולה</span>
+    </div>
+
+    <div class="now-bar">
+      <div class="label" id="nowLabel">בודקים תאריך…</div>
+      <button type="button" id="jumpBtn">קפיצה לחודש הנוכחי</button>
+    </div>
+  </div>
+
+  <div class="timeline" id="timeline"><!-- מוזרק ע״י JS מתוך מערך הנתונים למטה --></div>
+
+  <footer class="note">
+    <b>לגבי התאריכים:</b> פתיחת שנה״ל וחגי תשפ״ז מבוססים על לוח החופשות הציבורי של משרד החינוך; טווחי סוכות, חנוכה וסיום שנה״ל מסומנים כ״בקירוב״ ורצוי לאמת מול לוח בית הספר הספציפי. פריטי המבחנים, ההודעות והעבודות הם <b>דוגמאות לעריכה</b> — כדי להתאים אותם, פתחו את קובץ ה-HTML וערכו את מערך <code>SCHOOL_YEAR</code> בתחילת קטע ה-JavaScript (לכל פריט יש <code>short</code> — התאריך הקצר שמוצג צמוד לקו, ו-<code>full</code> — התאריך המלא שמופיע בפרטים).
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===== מערך הנתונים של כל השנה — ניתן לערוך כאן =====
+  // type: 'holiday' | 'test' | 'notice' | 'project'
+  // short: תאריך קצר שמוצג בתגית צמוד לקו (בלי שנה, לדוגמה "23.3" או "11–14.9")
+  // full: התאריך המלא שמופיע בפרטים (עם יום בשבוע ושנה)
+  var SCHOOL_YEAR = [
+    { m:9, y:2026, name:"ספטמבר", items:[
+      {type:"holiday", title:"פתיחת שנת הלימודים תשפ״ז", short:"1.9", full:"יום שלישי, 1.9.2026", detail:{}},
+      {type:"holiday", title:"חופשת ראש השנה", short:"11–14.9", full:"שישי–שני, 11–14.9.2026", detail:{
+        links:[{label:"לוח חופשות משרד החינוך", url:"https://edu.gov.il"}]
+      }},
+      {type:"holiday", title:"ערב יום כיפור ויום הכיפורים", short:"20–21.9", full:"ראשון–שני, 20–21.9.2026", detail:{}},
+      {type:"notice", title:"אסיפת הורים פתיחת שנה (דוגמה)", short:"7.9", full:"יום שני, 7.9.2026", detail:{
+        links:[{label:"טופס אישור הגעה (Google Forms)", url:"#", ph:true}]
+      }},
+      {type:"project", title:"פרויקט פתיחה: \"כרטיס ביקור אישי\" (דוגמה)", short:"28.9", full:"הגשה עד יום שני, 28.9.2026", detail:{
+        pages:"עמ׳ 4–10 בחוברת הכיתה",
+        links:[{label:"תבנית מצגת (Google Slides)", url:"#", ph:true}]
+      }}
+    ]},
+    { m:10, y:2026, name:"אוקטובר", items:[
+      {type:"holiday", title:"חופשת סוכות (חוה״מ ושמחת תורה)", short:"25.9–3.10", full:"25.9–3.10.2026 (בקירוב — לאמת מול לוח ביה״ס)", detail:{
+        links:[{label:"לאימות מול לוח בית הספר", url:"https://edu.gov.il"}]
+      }},
+      {type:"test", title:"מבחן חשבון — פרקים 1–2 (דוגמה)", short:"28.10", full:"יום רביעי, 28.10.2026", detail:{
+        pages:"עמ׳ 12–28 בספר הלימוד",
+        links:[{label:"תרגול נוסף — דף כסף", url:"https://www.daf-kesef.co.il"}]
+      }},
+      {type:"test", title:"מבחן אנגלית — Unit 1 (דוגמה)", short:"29.10", full:"יום חמישי, 29.10.2026", detail:{
+        words:["cat","dog","happy","sad","friend","school","teacher","book","pencil","family"],
+        links:[{label:"תרגול מילים (Quizlet)", url:"https://quizlet.com"}]
+      }}
+    ]},
+    { m:11, y:2026, name:"נובמבר", items:[
+      {type:"test", title:"מבחן לשון — פרק הפועל (דוגמה)", short:"11.11", full:"יום רביעי, 11.11.2026", detail:{
+        pages:"עמ׳ 34–40",
+        links:[{label:"תרגול (Google Forms)", url:"#", ph:true}]
+      }},
+      {type:"project", title:"עבודת חקר במדעים (דוגמה)", short:"30.11", full:"הגשה עד יום שני, 30.11.2026", detail:{
+        links:[{label:"הנחיות מלאות (Google Docs)", url:"#", ph:true},
+               {label:"טבלת מעקב (Google Sheets)", url:"#", ph:true}]
+      }},
+      {type:"notice", title:"שינוי זמני בלוח ההסעות (דוגמה)", short:"4.11", full:"עודכן יום רביעי, 4.11.2026", detail:{}}
+    ]},
+    { m:12, y:2026, name:"דצמבר", items:[
+      {type:"holiday", title:"חופשת חנוכה", short:"6–11.12", full:"6–11.12.2026 (בקירוב — כולל יום בחירה)", detail:{
+        links:[{label:"לאימות מול לוח בית הספר", url:"https://edu.gov.il"}]
+      }},
+      {type:"test", title:"מבחן אנגלית — סיכום מחצית א׳ (דוגמה)", short:"3.12", full:"יום חמישי, 3.12.2026", detail:{
+        pages:"עמ׳ 50–65",
+        words:["weather","morning","evening","kitchen","garden","holiday","journey","mountain","river","winter"],
+        links:[{label:"תרגול (Duolingo)", url:"https://www.duolingo.com"}]
+      }},
+      {type:"notice", title:"מסיבת חנוכה כיתתית (דוגמה)", short:"2.12", full:"יום רביעי, 2.12.2026", detail:{}}
+    ]},
+    { m:1, y:2027, name:"ינואר", items:[
+      {type:"holiday", title:"ט״ו בשבט", short:"22–23.1", full:"ליל שישי–שבת, 22–23.1.2027", detail:{}},
+      {type:"test", title:"מבחן חשבון — סיכום מחצית א׳ (דוגמה)", short:"26.1", full:"יום שלישי, 26.1.2027", detail:{ pages:"עמ׳ 70–95" }},
+      {type:"project", title:"תיק עבודות מחצית א׳ (דוגמה)", short:"28.1", full:"הגשה עד יום חמישי, 28.1.2027", detail:{
+        links:[{label:"תיקיית איסוף (Google Drive)", url:"#", ph:true}]
+      }}
+    ]},
+    { m:2, y:2027, name:"פברואר", items:[
+      {type:"test", title:"מבחן תנ״ך — ספר שמות (דוגמה)", short:"15.2", full:"יום שני, 15.2.2027", detail:{ pages:"עמ׳ 102–118" }},
+      {type:"notice", title:"יום ספורט בית ספרי (דוגמה)", short:"18.2", full:"יום חמישי, 18.2.2027", detail:{}},
+      {type:"test", title:"מבחן לשון — כתיב מלא וחסר (דוגמה)", short:"24.2", full:"יום רביעי, 24.2.2027", detail:{
+        words:["כיתה","מורה","תלמיד","ספרייה","מחברת","שיעור","הפסקה","תעודה","מבחן","חופשה"]
+      }}
+    ]},
+    { m:3, y:2027, name:"מרץ", items:[
+      {type:"holiday", title:"פורים", short:"23.3", full:"יום שלישי, 23.3.2027 (י״ג באדר)", detail:{}},
+      {type:"test", title:"מבחן היסטוריה — מלחמת העולם (דוגמה)", short:"16.3", full:"יום שלישי, 16.3.2027", detail:{
+        pages:"עמ׳ 120–140",
+        links:[{label:"סרטון הסבר (YouTube)", url:"https://www.youtube.com"}]
+      }},
+      {type:"project", title:"הכנת תחפושת ומצגת על החג (דוגמה)", short:"23.3", full:"עד יום שלישי, 23.3.2027", detail:{
+        links:[{label:"רעיונות ותבנית (Google Slides)", url:"#", ph:true}]
+      }}
+    ]},
+    { m:4, y:2027, name:"אפריל", items:[
+      {type:"holiday", title:"חופשת פסח (ערב חג עד אסרו חג)", short:"21–29.4", full:"21–29.4.2027", detail:{}},
+      {type:"test", title:"מבחן חשבון — סיכום מחצית ב׳ (דוגמה)", short:"14.4", full:"יום רביעי, 14.4.2027", detail:{ pages:"עמ׳ 145–160" }},
+      {type:"notice", title:"בחינת מיצ״ב (דוגמה)", short:"18.4", full:"יום ראשון, 18.4.2027", detail:{}}
+    ]},
+    { m:5, y:2027, name:"מאי", items:[
+      {type:"holiday", title:"יום הזיכרון ויום העצמאות", short:"11–12.5", full:"שלישי–רביעי, 11–12.5.2027", detail:{}},
+      {type:"test", title:"מבחן אנגלית — דקדוק (דוגמה)", short:"18.5", full:"יום שלישי, 18.5.2027", detail:{
+        pages:"עמ׳ 162–175",
+        words:["grammar","sentence","question","answer","future","past","present","always","never","usually"]
+      }},
+      {type:"project", title:"עבודת סיכום שנתית במדעים (דוגמה)", short:"24.5", full:"שלבי הגשה עד יום שני, 24.5.2027", detail:{
+        links:[{label:"מעקב התקדמות (Google Sheets)", url:"#", ph:true}]
+      }}
+    ]},
+    { m:6, y:2027, name:"יוני", items:[
+      {type:"holiday", title:"חופשת שבועות", short:"10–11.6", full:"חמישי–שישי, 10–11.6.2027", detail:{}},
+      {type:"test", title:"מבחני סיום שנה — לשון וחשבון (דוגמה)", short:"15.6", full:"יום שלישי, 15.6.2027", detail:{ pages:"עמ׳ 180–200" }},
+      {type:"notice", title:"טקס סיום שנה (דוגמה)", short:"24.6", full:"יום חמישי, 24.6.2027", detail:{}},
+      {type:"holiday", title:"תחילת חופשת הקיץ (משוער)", short:"~25.6", full:"יום שישי, 25.6.2027 (משוער — משתנה בין בתי ספר)", detail:{}}
+    ]},
+    { m:7, y:2027, name:"יולי", items:[
+      {type:"holiday", title:"חופשת הקיץ נמשכת", short:"1–31.7", full:"כל חודש יולי 2027", detail:{}},
+      {type:"project", title:"חוברת קיץ — קריאה וכתיבה (דוגמה)", short:"עד 29.8", full:"להגשה עד יום ראשון, 29.8.2027", detail:{
+        pages:"עמ׳ 1–30 בחוברת הקיץ",
+        links:[{label:"רשימת קריאה מומלצת (Google Docs)", url:"#", ph:true}]
+      }}
+    ]},
+    { m:8, y:2027, name:"אוגוסט", items:[
+      {type:"holiday", title:"חופשת הקיץ נמשכת עד 31.8.2027", short:"1–31.8", full:"כל חודש אוגוסט 2027, עד 31.8.2027", detail:{}},
+      {type:"notice", title:"רכישת ציוד לקראת השנה הבאה (דוגמה)", short:"26.8", full:"יום חמישי, 26.8.2027", detail:{
+        links:[{label:"רשימת ציוד (Google Sheets)", url:"#", ph:true}]
+      }}
+    ]}
+  ];
+
+  var KIND_LABEL = { holiday:"חג / חופשה", test:"מבחן", notice:"הודעה", project:"עבודה גדולה" };
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function buildDetail(it){
+    var d = it.detail || {};
+    var rows = [];
+    rows.push('<dt>תאריך</dt><dd>'+escapeHtml(it.full)+'</dd>');
+    if(d.pages){ rows.push('<dt>עמודים בספר</dt><dd>'+escapeHtml(d.pages)+'</dd>'); }
+    if(d.words && d.words.length){
+      var chips = d.words.map(function(w){ return '<span>'+escapeHtml(w)+'</span>'; }).join("");
+      rows.push('<dt>רשימת מילים</dt><dd><div class="word-list">'+chips+'</div></dd>');
+    }
+    if(d.links && d.links.length){
+      var ls = d.links.map(function(l){
+        if(l.ph){ return '<span class="ph">🔗 '+escapeHtml(l.label)+' — הוסיפו כאן את הקישור האמיתי</span>'; }
+        return '<a href="'+encodeURI(l.url)+'" target="_blank" rel="noopener">🔗 '+escapeHtml(l.label)+'</a>';
+      }).join("");
+      rows.push('<dt>קישורים</dt><dd><div class="links">'+ls+'</div></dd>');
+    }
+    return '<div class="detail"><dl>'+rows.join("")+'</dl></div>';
+  }
+
+  function chevronSvg(){
+    return '<svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">'+
+      '<path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  var now = new Date();
+  var curY = now.getFullYear(), curM = now.getMonth()+1;
+
+  var timelineEl = document.getElementById("timeline");
+  var html = "";
+  var currentMonthName = null;
+
+  SCHOOL_YEAR.forEach(function(month){
+    var isCurrent = (month.y === curY && month.m === curM);
+    if(isCurrent) currentMonthName = month.name + " " + month.y;
+
+    var headRow =
+      '<div class="row">'+
+        '<div class="rail-cell"><div class="seg"></div><div class="bead-mark"></div></div>'+
+        '<div class="month-head-content"><h2>'+month.name+'</h2><span class="yr">'+month.y+'</span>'+
+        (isCurrent ? '<span class="now-pill">החודש הנוכחי</span>' : '')+
+        '</div>'+
+      '</div>';
+
+    var itemRows = month.items.map(function(it){
+      var badge = KIND_LABEL[it.type] || it.type;
+      return '<div class="row" data-kind="'+it.type+'">'+
+        '<div class="rail-cell"><div class="seg"></div><div class="date-tag">'+escapeHtml(it.short)+'</div></div>'+
+        '<details class="item">'+
+          '<summary><div class="s-main"><div class="title-row">'+
+            '<span class="kind-badge">'+badge+'</span>'+
+          '</div><div class="title">'+escapeHtml(it.title)+'</div>'+
+          '</div>'+
+          chevronSvg()+
+          '</summary>'+
+          buildDetail(it)+
+        '</details>'+
+      '</div>';
+    }).join("");
+
+    html += '<div class="month'+(isCurrent?' current':'')+'" id="month-'+month.y+'-'+month.m+'">'+
+      '<div class="month-rows">'+headRow+itemRows+'</div>'+
+    '</div>';
+  });
+
+  timelineEl.innerHTML = html;
+
+  var nowLabel = document.getElementById("nowLabel");
+  var inRange = currentMonthName !== null;
+  nowLabel.innerHTML = inRange
+    ? 'אנחנו כרגע ב<b>'+currentMonthName+'</b> — החודש מסומן בציר למטה.'
+    : 'התאריך הנוכחי נמצא מחוץ לטווח שנת הלימודים המוצגת כאן.';
+
+  document.getElementById("jumpBtn").addEventListener("click", function(){
+    var el = document.querySelector(".month.current");
+    if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+  });
+})();
+</script>
