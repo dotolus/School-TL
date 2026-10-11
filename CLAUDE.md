@@ -29,6 +29,15 @@ Config is via env vars (see `.env.example`, loaded through `dotenv`): `PORT`, `A
 
 Playwright's config (`playwright.config.js`) points `DATA_DIR` at an isolated temp dir too, but — unlike the Vitest integration tests — seeds it from the real `server/data/{themes.json,timeline.json}` first: a genuine deployment always starts from the committed seed files (there's no API to *create* a new theme, only to switch the active one), so an e2e run against a truly empty `DATA_DIR` would test a state that can't actually occur. Keep that seeding if you add more e2e specs.
 
+### Linting
+
+`npm run lint` runs ESLint (`eslint.config.js`, flat config). Three deliberate scope decisions, don't "fix" these without reconsidering why:
+- `react/prop-types` is off — this is plain JS (no TypeScript), nothing anywhere uses PropTypes, so enforcing it would mean retrofitting every component rather than being a lint-config change.
+- Only `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` are enabled from `eslint-plugin-react-hooks` — its `recommended` config (v7+) bundles React *Compiler* readiness rules (`purity`, `immutability`, `gating`, `static-components`, ...); this app doesn't use the Compiler, so those don't apply.
+- `eslint` is pinned to `^9` — `eslint-plugin-react`'s peer range doesn't yet cover ESLint 10.
+
+A **Claude Code hook** (`.claude/settings.json`, `PreToolUse`/`Bash`, filtered via `"if": "Bash(git push *)"`) runs `.claude/hooks/lint-before-push.js` before any `git push`-shaped Bash command and blocks it (via `permissionDecision: "deny"`) if `npm run lint` fails. `.claude/settings.json` and `.claude/hooks/` are deliberately carved out of the `.claude/*` gitignore rule (see `.gitignore`) so this hook is shared with anyone who clones the repo, not just a local preference.
+
 ## Architecture
 
 ### Data model

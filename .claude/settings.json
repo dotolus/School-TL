@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/lint-before-push.js",
+            "if": "Bash(git push *)",
+            "timeout": 60,
+            "statusMessage": "Running ESLint before push..."
+          }
+        ]
+      }
+    ]
+  }
+}
