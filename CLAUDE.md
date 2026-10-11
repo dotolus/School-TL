@@ -47,6 +47,7 @@ Themes are a separate file, `server/data/themes.json`: `{ activeThemeId, themes:
 - `GET /api/themes` — public. `PUT /api/themes/active` — admin-only.
 - `POST /api/auth/login` (checks `ADMIN_PASSWORD`, sets `express-session` cookie), `POST /api/auth/logout`, `GET /api/auth/me`.
 - `GET /api/history?itemId=&limit=`, `POST /api/history/:eventId/restore` — admin-only, see **History & recovery** below.
+- `GET /api/events` — public, stable contract for external consumers (e.g. a future calendar export). Deliberately separate from `/api/timeline`: `server/services/eventsApi.js` maps internal items to a decoupled shape (`month`/`year` instead of `m`/`y`, `shortDate`/`fullDate` instead of `short`/`full`, `requiresWhiteShirt`/`requiresFood` instead of the hyphenated internal keys, placeholder links resolved to `url: null`) so external callers aren't coupled to internal field-naming changes. If you add a new internal item field, decide deliberately whether it belongs in this mapping too — don't assume it should just pass through.
 
 ### History & recovery
 
