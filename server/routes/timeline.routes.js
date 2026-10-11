@@ -87,7 +87,10 @@ function withImages(item, images) {
 }
 
 function requireExistingItem(req, res, next) {
-  if (!store.getItem(req.params.id)) return res.status(404).json({ error: "Item not found" });
+  if (!store.getItem(req.params.id)) {
+    req.resume(); // drain the still-uploading body before rejecting
+    return res.status(404).json({ error: "Item not found" });
+  }
   next();
 }
 
