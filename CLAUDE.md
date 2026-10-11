@@ -14,7 +14,7 @@ A Hebrew (RTL) school-year timeline ("ציר שנת הלימודים") for תש�
 
 From the repo root:
 - `npm install` then `npm run install:client` — install server and client dependencies (first time only).
-- `npm run dev` — runs the Express API (nodemon, port 4000) and the Vite dev server together; Vite proxies `/api/*` to Express (see `client/vite.config.js`). Open the Vite URL it prints.
+- `npm run dev` — runs the Express API (nodemon, port 4000) and the Vite dev server together; Vite proxies `/api/*` to Express (see `client/vite.config.js`). Open the Vite URL it prints. `nodemon.json` deliberately excludes `server/data/` from its watch list — every mutation writes `timeline.json`/`history.jsonl`, and without that exclusion nodemon restarts (and silently drops the in-memory `express-session` store, logging out `/admin`) on every single edit.
 - `npm run build` — builds the client into `client/dist`.
 - `npm start` — runs `node server/index.js` only; if `client/dist` exists, Express serves it directly, so this is the single-process production mode (one port for UI + API).
 
@@ -23,11 +23,25 @@ Config is via env vars (see `.env.example`, loaded through `dotenv`): `PORT`, `A
 ### Tests
 
 - `npm test` — Vitest: unit + component + integration, fast, no browser. Single run per invocation (`npm run test:watch` for watch mode).
+- Single file/test: `npx vitest run path/to/thing.test.js` (or `-t "test name"` to filter by name); `npx playwright test e2e/viewer.spec.js` for one e2e spec.
 - `npm run test:e2e` — builds the client then runs Playwright against the real built app (`e2e/*.spec.js`). First time: `npx playwright install chromium`.
 
 `server/app.js` exports the Express `app` with no `.listen()` call specifically so tests can drive it in-process (via `supertest`) without a real port or the cron scheduler starting; `server/index.js` is the thin runtime entrypoint that adds those two things. Integration tests (`server/__tests__/*.integration.test.js`) and the server-side unit tests that touch disk (`timelineStore`/`historyStore`) point `DATA_DIR` at a fresh temp folder per test via the shared `createTestApp()` helper in `server/__tests__/testApp.js` — **critically, this clears every already-`require`d `server/` module from Node's own `require.cache` by hand**, not via `vi.resetModules()` (which does not reliably bust CJS `require()` caching here); if you add a new server module that reads from `config.js` at require-time, this is why a stale value won't leak into the next test. Never reuse `createTestApp()`'s pattern with a bare `vi.resetModules()` only — it silently doesn't isolate.
 
 Playwright's config (`playwright.config.js`) points `DATA_DIR` at an isolated temp dir too, but — unlike the Vitest integration tests — seeds it from the real `server/data/{themes.json,timeline.json}` first: a genuine deployment always starts from the committed seed files (there's no API to *create* a new theme, only to switch the active one), so an e2e run against a truly empty `DATA_DIR` would test a state that can't actually occur. Keep that seeding if you add more e2e specs.
+
+### Linting
+
+`npm run lint` runs ESLint (`eslint.config.js`, flat config). Three deliberate scope decisions, don't "fix" these without reconsidering why:
+- `react/prop-types` is off — this is plain JS (no TypeScript), nothing anywhere uses PropTypes, so enforcing it would mean retrofitting every component rather than being a lint-config change.
+- Only `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` are enabled from `eslint-plugin-react-hooks` — its `recommended` config (v7+) bundles React *Compiler* readiness rules (`purity`, `immutability`, `gating`, `static-components`, ...); this app doesn't use the Compiler, so those don't apply.
+- `eslint` is pinned to `^9` — `eslint-plugin-react`'s peer range doesn't yet cover ESLint 10.
+
+A **Claude Code hook** (`.claude/settings.json`, `PreToolUse`/`Bash`, filtered via `"if": "Bash(git push *)"`) runs `.claude/hooks/lint-before-push.js` before any `git push`-shaped Bash command and blocks it (via `permissionDecision: "deny"`) if `npm run lint` fails. `.claude/settings.json` and `.claude/hooks/` are deliberately carved out of the `.claude/*` gitignore rule (see `.gitignore`) so this hook is shared with anyone who clones the repo, not just a local preference.
+
+### CI
+
+`.github/workflows/ci.yml` runs on every `push` and `pull_request`: two parallel jobs, `test` (`npm test`) and `e2e` (installs Playwright's Chromium + OS deps, then `npm run test:e2e`). The e2e job uploads the Playwright HTML report as a build artifact if it fails (`playwright.config.js` only generates that report when `CI` is set — locally it's just the plain `list` reporter).
 
 ## Architecture
 
@@ -41,7 +55,7 @@ Playwright's config (`playwright.config.js`) points `DATA_DIR` at an isolated te
 `required-white-shirt` and `required-food` (both optional, default `false`) mark an item that needs a white shirt (e.g. sports day) or that parents should send food for (e.g. a class party). The viewer renders a pulsing badge next to such items — `client/src/viewer/WhiteShirtIcon.jsx` / `FoodIcon.jsx`, sharing the `.reminder-badge` pulse styling in `timeline.css` — to draw attention; an item can carry both flags at once. Adding another such reminder flag later means: a new optional boolean in `validateItemInput`/`addItem` (`timelineStore.js`), a new icon component reusing `.reminder-badge`, a render check in `ItemRow.jsx`/`ItemDetail.jsx`, and a checkbox in `ItemForm.jsx`.
 Hebrew month names are derived from a month-number lookup (`server/services/hebrewMonths.js`, mirrored in `client/src/hebrewMonths.js`) rather than stored per item. The viewer (`client/src/viewer/ViewerPage.jsx`) groups items by `(y, m)` and sorts chronologically to rebuild the month blocks.
 
-`detail.images` holds `{id, url}` entries pointing at files under `server/data/uploads/<itemId>/` (gitignored runtime content, served publicly and statically at `/uploads/...`). Images are uploaded/removed via dedicated admin-only sub-routes (`POST`/`DELETE /api/timeline/items/:id/images[/:imageId]` in `timeline.routes.js`, multipart via `multer`, server-generated filenames only) which go through the normal `timelineStore.updateItem` path underneath, so image changes are validated and show up in history like any other edit. Deleting an image reference never deletes the file from disk (so old history snapshots referencing it still resolve) — a deliberate, unbounded tradeoff like the `history.jsonl` retention gap. In the viewer, clicking a thumbnail (`ItemDetail.jsx`) opens it in `client/src/viewer/Lightbox.jsx` (a full-page in-app overlay with zoom buttons + mouse wheel, Escape/backdrop/× to close — never a plain `<a href>`, so it never triggers a browser download) via the `LightboxProvider` context (`client/src/viewer/LightboxProvider.jsx`, wrapped around the app in `App.jsx` next to `ThemeProvider`) so any component can call `useLightbox().open(url)` without prop-drilling.
+`detail.images` holds `{id, url}` entries pointing at files under `server/data/uploads/<itemId>/` (gitignored runtime content, served publicly and statically at `/uploads/...`). Images are uploaded/removed via dedicated admin-only sub-routes (`POST`/`DELETE /api/timeline/items/:id/images[/:imageId]` in `timeline.routes.js`, multipart via `multer`, server-generated filenames only) which go through the normal `timelineStore.updateItem` path underneath, so image changes are validated and show up in history like any other edit. Deleting an image reference never deletes the file from disk (so old history snapshots referencing it still resolve) — a deliberate, unbounded tradeoff like the `history.jsonl` retention gap. The admin upload UI (`client/src/admin/ImageManager.jsx`, used from `ItemForm.jsx` — edit-only, since uploading needs an existing item id) posts directly to those routes. In the viewer, clicking a thumbnail (`ItemDetail.jsx`) opens it in `client/src/viewer/Lightbox.jsx` (a full-page in-app overlay with zoom buttons + mouse wheel, Escape/backdrop/× to close — never a plain `<a href>`, so it never triggers a browser download) via the `LightboxProvider` context (`client/src/viewer/LightboxProvider.jsx`, wrapped around the app in `App.jsx` next to `ThemeProvider`) so any component can call `useLightbox().open(url)` without prop-drilling.
 
 `server/services/timelineStore.js` owns all reads/writes: in-memory cache, atomic writes (tmp file + `fs.rename`), and input validation (`validateItemInput`). Never write `timeline.json` directly from a route handler — go through this module.
 
@@ -64,7 +78,7 @@ Every mutation in `server/services/timelineStore.js` (`addItem`/`updateItem`/`de
 ### Client (`client/src/`)
 
 - `viewer/` — mirrors the original static page's DOM structure and class names exactly (`.masthead`, `.rail-cell`, `.date-tag`, `<details class="item">`, etc.) against the ported `styles/timeline.css`, so visual output matches `timeline.html`. `ViewerPage.jsx` fetches `/api/timeline` on mount; current-month detection and the "jump to current month" scroll button are ported as-is from the original inline script.
-- `admin/` — `AdminPage.jsx` gates on `GET /api/auth/me`; shows `LoginForm` until authenticated, otherwise item add/edit/delete (`ItemForm`, `ItemList`) and `ThemeSwitcher`.
+- `admin/` — `AdminPage.jsx` gates on `GET /api/auth/me`; shows `LoginForm` until authenticated, otherwise item add/edit/delete (`ItemForm`, `ItemList`, with `ImageManager` nested for editing an existing item's images), `ThemeSwitcher`, and `HistoryPanel`.
 - `App.jsx` routes `/` (viewer) and `/admin` via `react-router-dom`.
 
 ### Scheduler hook (`server/jobs/`)

@@ -4,7 +4,10 @@ client/dist/
 server/data/.*.tmp
 server/data/history.jsonl
 server/data/uploads/
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/**
 test-results/
 playwright-report/
 blob-report/
