@@ -7,6 +7,7 @@ const timelineRoutes = require("./routes/timeline.routes");
 const themesRoutes = require("./routes/themes.routes");
 const authRoutes = require("./routes/auth.routes");
 const historyRoutes = require("./routes/history.routes");
+const eventsRoutes = require("./routes/events.routes");
 const scheduler = require("./jobs/scheduler");
 
 const app = express();
@@ -25,6 +26,7 @@ app.use("/api/timeline", timelineRoutes);
 app.use("/api/themes", themesRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/events", eventsRoutes);
 
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST));
