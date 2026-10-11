@@ -46,6 +46,11 @@ Themes are a separate file, `server/data/themes.json`: `{ activeThemeId, themes:
 - `POST /api/timeline/items`, `PUT /api/timeline/items/:id`, `DELETE /api/timeline/items/:id` — admin-only (`requireAuth` middleware).
 - `GET /api/themes` — public. `PUT /api/themes/active` — admin-only.
 - `POST /api/auth/login` (checks `ADMIN_PASSWORD`, sets `express-session` cookie), `POST /api/auth/logout`, `GET /api/auth/me`.
+- `GET /api/history?itemId=&limit=`, `POST /api/history/:eventId/restore` — admin-only, see **History & recovery** below.
+
+### History & recovery
+
+Every mutation in `server/services/timelineStore.js` (`addItem`/`updateItem`/`deleteItem`) also appends an entry to `server/data/history.jsonl` (JSON Lines, append-only, via `server/services/historyStore.js`): `{ id, ts, op: "create"|"update"|"delete"|"restore", itemId, title, before, after }`. `timelineStore.restoreFromHistory(eventId)` is the one restore path for both use cases — undeleting (restores a `delete` entry's `before` snapshot) and reverting properties (restores any other entry's `after` snapshot) — and itself logs a new `restore` entry, so a restore can later be undone the same way. The admin UI (`client/src/admin/HistoryPanel.jsx`) shows a global feed (needed since a deleted item no longer appears in the normal item list) or a per-item feed via the "היסטוריה" button in `ItemList.jsx`. The history log has no retention/pruning yet — a natural future job for the scheduler hook below.
 
 ### Client (`client/src/`)
 

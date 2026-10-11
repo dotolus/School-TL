@@ -10,6 +10,7 @@ module.exports = {
   DATA_DIR,
   TIMELINE_FILE: path.join(DATA_DIR, "timeline.json"),
   THEMES_FILE: path.join(DATA_DIR, "themes.json"),
+  HISTORY_FILE: path.join(DATA_DIR, "history.jsonl"),
   CLIENT_DIST: path.join(__dirname, "..", "client", "dist"),
   SCHEDULER_CRON: process.env.SCHEDULER_CRON || "0 6 * * *",
 };

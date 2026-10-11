@@ -6,6 +6,7 @@ const { PORT, SESSION_SECRET, CLIENT_DIST } = require("./config");
 const timelineRoutes = require("./routes/timeline.routes");
 const themesRoutes = require("./routes/themes.routes");
 const authRoutes = require("./routes/auth.routes");
+const historyRoutes = require("./routes/history.routes");
 const scheduler = require("./jobs/scheduler");
 
 const app = express();
@@ -23,6 +24,7 @@ app.use(
 app.use("/api/timeline", timelineRoutes);
 app.use("/api/themes", themesRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/history", historyRoutes);
 
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST));

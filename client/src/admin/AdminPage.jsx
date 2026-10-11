@@ -5,12 +5,14 @@ import { LoginForm } from "./LoginForm";
 import { ItemForm } from "./ItemForm";
 import { ItemList } from "./ItemList";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { HistoryPanel } from "./HistoryPanel";
 
 export function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(null);
   const [items, setItems] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState(null);
+  const [historyItemId, setHistoryItemId] = useState(null);
 
   useEffect(() => {
     api
@@ -94,7 +96,23 @@ export function AdminPage() {
             await api.deleteItem(id);
             loadItems();
           }}
+          onShowHistory={(id) => setHistoryItemId(id)}
         />
+      </div>
+
+      <div className="admin-card">
+        <h2>
+          היסטוריה ושחזור
+          {historyItemId && (
+            <>
+              {" "}
+              <button className="btn secondary" onClick={() => setHistoryItemId(null)}>
+                הצגת כל ההיסטוריה (כולל פריטים שנמחקו)
+              </button>
+            </>
+          )}
+        </h2>
+        <HistoryPanel itemId={historyItemId} onRestored={loadItems} />
       </div>
     </div>
   );

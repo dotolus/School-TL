@@ -3,7 +3,7 @@ import { ItemForm } from "./ItemForm";
 
 const KIND_LABEL = { holiday: "חג / חופשה", test: "מבחן", notice: "הודעה", project: "עבודה גדולה" };
 
-export function ItemList({ items, onUpdate, onDelete }) {
+export function ItemList({ items, onUpdate, onDelete, onShowHistory }) {
   const [editingId, setEditingId] = useState(null);
 
   const sorted = [...items].sort((a, b) => a.y - b.y || a.m - b.m);
@@ -34,6 +34,9 @@ export function ItemList({ items, onUpdate, onDelete }) {
             <div className="admin-actions">
               <button className="btn secondary" onClick={() => setEditingId(item.id)}>
                 ערוך
+              </button>
+              <button className="btn secondary" onClick={() => onShowHistory?.(item.id)}>
+                היסטוריה
               </button>
               <button className="btn danger" onClick={() => onDelete(item.id)}>
                 מחק
