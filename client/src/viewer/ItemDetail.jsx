@@ -11,6 +11,12 @@ export function ItemDetail({ item }) {
             <dd>יש להביא / ללבוש חולצה לבנה</dd>
           </>
         )}
+        {item["required-food"] && (
+          <>
+            <dt>אוכל</dt>
+            <dd>יש להביא אוכל / חטיף</dd>
+          </>
+        )}
         {d.pages && (
           <>
             <dt>עמודים בספר</dt>

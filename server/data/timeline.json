@@ -275,7 +275,8 @@
       "title": "מסיבת חנוכה כיתתית (דוגמה)",
       "short": "2.12",
       "full": "יום רביעי, 2.12.2026",
-      "detail": {}
+      "detail": {},
+      "required-food": true
     },
     {
       "id": "a07d8339-ff71-4e2f-aae5-4e365a3e61b9",

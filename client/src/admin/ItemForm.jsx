@@ -34,6 +34,7 @@ function emptyForm() {
     words: "",
     linksText: "",
     requiredWhiteShirt: false,
+    requiredFood: false,
   };
 }
 
@@ -51,6 +52,7 @@ function itemToForm(item) {
     words: (d.words || []).join(", "),
     linksText: linksToText(d.links),
     requiredWhiteShirt: !!item["required-white-shirt"],
+    requiredFood: !!item["required-food"],
   };
 }
 
@@ -82,6 +84,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
           links: form.linksText ? textToLinks(form.linksText) : undefined,
         },
         "required-white-shirt": form.requiredWhiteShirt,
+        "required-food": form.requiredFood,
       };
       await onSubmit(payload);
     } catch (err) {
@@ -147,6 +150,15 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
           style={{ width: "auto" }}
         />
         יש צורך בחולצה לבנה
+      </label>
+      <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <input
+          type="checkbox"
+          checked={form.requiredFood}
+          onChange={updateChecked("requiredFood")}
+          style={{ width: "auto" }}
+        />
+        יש צורך להביא אוכל
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="admin-actions">

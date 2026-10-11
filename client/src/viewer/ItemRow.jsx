@@ -1,5 +1,6 @@
 import { ItemDetail } from "./ItemDetail";
 import { WhiteShirtIcon } from "./WhiteShirtIcon";
+import { FoodIcon } from "./FoodIcon";
 
 const KIND_LABEL = { holiday: "חג / חופשה", test: "מבחן", notice: "הודעה", project: "עבודה גדולה" };
 
@@ -31,6 +32,7 @@ export function ItemRow({ item }) {
             <div className="title-row">
               <span className="kind-badge">{badge}</span>
               {item["required-white-shirt"] && <WhiteShirtIcon />}
+              {item["required-food"] && <FoodIcon />}
             </div>
             <div className="title">{item.title}</div>
           </div>
