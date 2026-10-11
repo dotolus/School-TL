@@ -21,7 +21,7 @@ module.exports = defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  reporter: "list",
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   globalTeardown: require.resolve("./e2e/global-teardown.js"),
   use: {
     baseURL: `http://localhost:${PORT}`,
