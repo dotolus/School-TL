@@ -1,5 +1,8 @@
+import { useLightbox } from "./LightboxProvider";
+
 export function ItemDetail({ item }) {
   const d = item.detail || {};
+  const lightbox = useLightbox();
   return (
     <div className="detail">
       <dl>
@@ -51,6 +54,25 @@ export function ItemDetail({ item }) {
                     </a>
                   )
                 )}
+              </div>
+            </dd>
+          </>
+        )}
+        {d.images && d.images.length > 0 && (
+          <>
+            <dt>תמונות</dt>
+            <dd>
+              <div className="image-thumbs">
+                {d.images.map((img) => (
+                  <button
+                    key={img.id}
+                    type="button"
+                    className="image-thumb"
+                    onClick={() => lightbox?.open(img.url)}
+                  >
+                    <img src={img.url} alt="" />
+                  </button>
+                ))}
               </div>
             </dd>
           </>

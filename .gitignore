@@ -3,4 +3,5 @@ client/dist/
 .env
 server/data/.*.tmp
 server/data/history.jsonl
+server/data/uploads/
 .claude/
