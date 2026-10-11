@@ -162,6 +162,21 @@ h1,h2,h3{ font-family:'Frank Ruhl Libre', 'David Libre', serif; margin:0; text-w
 
 .item .title{ font-weight:700; font-size:1rem; }
 
+.white-shirt-badge{
+  display:inline-flex; align-items:center; justify-content:center; flex:none;
+  width:26px; height:26px; border-radius:50%;
+  color: rgba(0,0,0,.35); background: var(--accent);
+  animation: shirt-pulse 1.8s ease-in-out infinite;
+}
+@keyframes shirt-pulse{
+  0%   { box-shadow: 0 0 0 0 rgba(138,59,42,.45); transform: scale(1); }
+  60%  { box-shadow: 0 0 0 7px rgba(138,59,42,0); transform: scale(1.08); }
+  100% { box-shadow: 0 0 0 0 rgba(138,59,42,0); transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce){
+  .white-shirt-badge{ animation: none; }
+}
+
 .chev{ flex:none; color:var(--ink-soft); transition: transform .18s ease; }
 .item[open] .chev{ transform: rotate(180deg); }
 

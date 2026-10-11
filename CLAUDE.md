@@ -30,8 +30,10 @@ There is no test suite configured.
 
 `server/data/timeline.json` is the single source of truth, a flat array of items (no nested month grouping — simpler than the original `SCHOOL_YEAR` structure):
 ```
-{ id, type: "holiday"|"test"|"notice"|"project", m: 1-12, y, title, short, full, detail: { pages?, words?[], links?[{label,url,ph?}] } }
+{ id, type: "holiday"|"test"|"notice"|"project", m: 1-12, y, title, short, full,
+  detail: { pages?, words?[], links?[{label,url,ph?}] }, "required-white-shirt"?: boolean }
 ```
+`required-white-shirt` (optional, default `false`) marks an item that needs a white shirt (e.g. sports day); the viewer renders a pulsing white T-shirt badge (`client/src/viewer/WhiteShirtIcon.jsx`, `.white-shirt-badge` in `timeline.css`) next to such items to draw attention.
 Hebrew month names are derived from a month-number lookup (`server/services/hebrewMonths.js`, mirrored in `client/src/hebrewMonths.js`) rather than stored per item. The viewer (`client/src/viewer/ViewerPage.jsx`) groups items by `(y, m)` and sorts chronologically to rebuild the month blocks.
 
 `server/services/timelineStore.js` owns all reads/writes: in-memory cache, atomic writes (tmp file + `fs.rename`), and input validation (`validateItemInput`). Never write `timeline.json` directly from a route handler — go through this module.

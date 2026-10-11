@@ -5,6 +5,12 @@ export function ItemDetail({ item }) {
       <dl>
         <dt>תאריך</dt>
         <dd>{item.full}</dd>
+        {item["required-white-shirt"] && (
+          <>
+            <dt>לבוש</dt>
+            <dd>יש להביא / ללבוש חולצה לבנה</dd>
+          </>
+        )}
         {d.pages && (
           <>
             <dt>עמודים בספר</dt>

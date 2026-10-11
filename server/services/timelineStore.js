@@ -61,6 +61,12 @@ function validateItemInput(input) {
   if (detail.words && !Array.isArray(detail.words)) {
     throw new Error("detail.words must be an array");
   }
+  if (
+    input["required-white-shirt"] !== undefined &&
+    typeof input["required-white-shirt"] !== "boolean"
+  ) {
+    throw new Error("required-white-shirt must be a boolean");
+  }
 }
 
 function getAll() {
@@ -79,6 +85,7 @@ function addItem(input) {
     short: input.short,
     full: input.full,
     detail: input.detail || {},
+    "required-white-shirt": Boolean(input["required-white-shirt"]),
   };
   data.items.push(item);
   saveAtomic(data);

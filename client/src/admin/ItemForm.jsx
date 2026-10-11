@@ -23,7 +23,18 @@ function textToLinks(text) {
 }
 
 function emptyForm() {
-  return { type: "notice", m: "", y: "", title: "", short: "", full: "", pages: "", words: "", linksText: "" };
+  return {
+    type: "notice",
+    m: "",
+    y: "",
+    title: "",
+    short: "",
+    full: "",
+    pages: "",
+    words: "",
+    linksText: "",
+    requiredWhiteShirt: false,
+  };
 }
 
 function itemToForm(item) {
@@ -39,6 +50,7 @@ function itemToForm(item) {
     pages: d.pages || "",
     words: (d.words || []).join(", "),
     linksText: linksToText(d.links),
+    requiredWhiteShirt: !!item["required-white-shirt"],
   };
 }
 
@@ -48,6 +60,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
   const [busy, setBusy] = useState(false);
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const updateChecked = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.checked }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,6 +81,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
             : undefined,
           links: form.linksText ? textToLinks(form.linksText) : undefined,
         },
+        "required-white-shirt": form.requiredWhiteShirt,
       };
       await onSubmit(payload);
     } catch (err) {
@@ -124,6 +138,15 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
       <label>
         קישורים, שורה לכל קישור: תווית|כתובת (הוסיפו ‎|ph‎ בסוף לקישור ממלא-מקום)
         <textarea rows={3} value={form.linksText} onChange={update("linksText")} />
+      </label>
+      <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <input
+          type="checkbox"
+          checked={form.requiredWhiteShirt}
+          onChange={updateChecked("requiredWhiteShirt")}
+          style={{ width: "auto" }}
+        />
+        יש צורך בחולצה לבנה
       </label>
       {error && <p className="error-text">{error}</p>}
       <div className="admin-actions">

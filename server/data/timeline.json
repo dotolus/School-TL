@@ -407,7 +407,8 @@
       "title": "יום ספורט בית ספרי (דוגמה)",
       "short": "18.2",
       "full": "יום חמישי, 18.2.2027",
-      "detail": {}
+      "detail": {},
+      "required-white-shirt": true
     },
     {
       "id": "480d7066-1d19-491f-aad1-b00fa21afc6f",
