@@ -68,6 +68,9 @@ function validateItemInput(input) {
   ) {
     throw new Error("required-white-shirt must be a boolean");
   }
+  if (input["required-food"] !== undefined && typeof input["required-food"] !== "boolean") {
+    throw new Error("required-food must be a boolean");
+  }
 }
 
 function getAll() {
@@ -87,6 +90,7 @@ function addItem(input) {
     full: input.full,
     detail: input.detail || {},
     "required-white-shirt": Boolean(input["required-white-shirt"]),
+    "required-food": Boolean(input["required-food"]),
   };
   data.items.push(item);
   saveAtomic(data);

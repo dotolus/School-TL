@@ -33,7 +33,7 @@ There is no test suite configured.
 { id, type: "holiday"|"test"|"notice"|"project", m: 1-12, y, title, short, full,
   detail: { pages?, words?[], links?[{label,url,ph?}] }, "required-white-shirt"?: boolean }
 ```
-`required-white-shirt` (optional, default `false`) marks an item that needs a white shirt (e.g. sports day); the viewer renders a pulsing white T-shirt badge (`client/src/viewer/WhiteShirtIcon.jsx`, `.white-shirt-badge` in `timeline.css`) next to such items to draw attention.
+`required-white-shirt` and `required-food` (both optional, default `false`) mark an item that needs a white shirt (e.g. sports day) or that parents should send food for (e.g. a class party). The viewer renders a pulsing badge next to such items — `client/src/viewer/WhiteShirtIcon.jsx` / `FoodIcon.jsx`, sharing the `.reminder-badge` pulse styling in `timeline.css` — to draw attention; an item can carry both flags at once. Adding another such reminder flag later means: a new optional boolean in `validateItemInput`/`addItem` (`timelineStore.js`), a new icon component reusing `.reminder-badge`, a render check in `ItemRow.jsx`/`ItemDetail.jsx`, and a checkbox in `ItemForm.jsx`.
 Hebrew month names are derived from a month-number lookup (`server/services/hebrewMonths.js`, mirrored in `client/src/hebrewMonths.js`) rather than stored per item. The viewer (`client/src/viewer/ViewerPage.jsx`) groups items by `(y, m)` and sorts chronologically to rebuild the month blocks.
 
 `server/services/timelineStore.js` owns all reads/writes: in-memory cache, atomic writes (tmp file + `fs.rename`), and input validation (`validateItemInput`). Never write `timeline.json` directly from a route handler — go through this module.
