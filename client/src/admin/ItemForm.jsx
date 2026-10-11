@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ImageManager } from "./ImageManager";
+import { linksToText, textToLinks } from "./linkFormat";
 
 const TYPES = [
   { value: "holiday", label: "חג / חופשה" },
@@ -7,21 +8,6 @@ const TYPES = [
   { value: "notice", label: "הודעה" },
   { value: "project", label: "עבודה גדולה" },
 ];
-
-function linksToText(links) {
-  return (links || []).map((l) => [l.label, l.url, l.ph ? "ph" : ""].filter(Boolean).join("|")).join("\n");
-}
-
-function textToLinks(text) {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [label, url, ph] = line.split("|").map((p) => (p || "").trim());
-      return { label, url: url || "#", ph: ph === "ph" };
-    });
-}
 
 function emptyForm() {
   return {

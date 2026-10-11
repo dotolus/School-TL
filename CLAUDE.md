@@ -10,8 +10,6 @@ A Hebrew (RTL) school-year timeline ("ציר שנת הלימודים") for תש�
 - `client/` — React (Vite) frontend: a public viewer page and a password-protected `/admin` page for editing the data.
 - `timeline.html` — the original static single-file version. It is **frozen**, kept only as a visual/structural reference (the client's CSS and component structure were ported from it 1:1). It is not served by the app and is not updated when the data changes.
 
-There is no git repository initialized in this directory yet.
-
 ## Commands
 
 From the repo root:
@@ -20,9 +18,16 @@ From the repo root:
 - `npm run build` — builds the client into `client/dist`.
 - `npm start` — runs `node server/index.js` only; if `client/dist` exists, Express serves it directly, so this is the single-process production mode (one port for UI + API).
 
-Config is via env vars (see `.env.example`, loaded through `dotenv`): `PORT`, `ADMIN_PASSWORD` (shared password gating all `/admin` mutations), `SESSION_SECRET`, `SCHEDULER_CRON`.
+Config is via env vars (see `.env.example`, loaded through `dotenv`): `PORT`, `ADMIN_PASSWORD` (shared password gating all `/admin` mutations), `SESSION_SECRET`, `SCHEDULER_CRON`, `DATA_DIR` (also what tests use to redirect persistence to a temp dir instead of the real `server/data/`).
 
-There is no test suite configured.
+### Tests
+
+- `npm test` — Vitest: unit + component + integration, fast, no browser. Single run per invocation (`npm run test:watch` for watch mode).
+- `npm run test:e2e` — builds the client then runs Playwright against the real built app (`e2e/*.spec.js`). First time: `npx playwright install chromium`.
+
+`server/app.js` exports the Express `app` with no `.listen()` call specifically so tests can drive it in-process (via `supertest`) without a real port or the cron scheduler starting; `server/index.js` is the thin runtime entrypoint that adds those two things. Integration tests (`server/__tests__/*.integration.test.js`) and the server-side unit tests that touch disk (`timelineStore`/`historyStore`) point `DATA_DIR` at a fresh temp folder per test via the shared `createTestApp()` helper in `server/__tests__/testApp.js` — **critically, this clears every already-`require`d `server/` module from Node's own `require.cache` by hand**, not via `vi.resetModules()` (which does not reliably bust CJS `require()` caching here); if you add a new server module that reads from `config.js` at require-time, this is why a stale value won't leak into the next test. Never reuse `createTestApp()`'s pattern with a bare `vi.resetModules()` only — it silently doesn't isolate.
+
+Playwright's config (`playwright.config.js`) points `DATA_DIR` at an isolated temp dir too, but — unlike the Vitest integration tests — seeds it from the real `server/data/{themes.json,timeline.json}` first: a genuine deployment always starts from the committed seed files (there's no API to *create* a new theme, only to switch the active one), so an e2e run against a truly empty `DATA_DIR` would test a state that can't actually occur. Keep that seeding if you add more e2e specs.
 
 ## Architecture
 

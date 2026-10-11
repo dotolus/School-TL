@@ -5,3 +5,7 @@ server/data/.*.tmp
 server/data/history.jsonl
 server/data/uploads/
 .claude/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
