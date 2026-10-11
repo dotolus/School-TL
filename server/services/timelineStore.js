@@ -62,6 +62,9 @@ function validateItemInput(input) {
   if (detail.words && !Array.isArray(detail.words)) {
     throw new Error("detail.words must be an array");
   }
+  if (detail.images && !Array.isArray(detail.images)) {
+    throw new Error("detail.images must be an array");
+  }
   if (
     input["required-white-shirt"] !== undefined &&
     typeof input["required-white-shirt"] !== "boolean"
@@ -75,6 +78,10 @@ function validateItemInput(input) {
 
 function getAll() {
   return load().items;
+}
+
+function getItem(id) {
+  return load().items.find((it) => it.id === id) || null;
 }
 
 function addItem(input) {
@@ -145,6 +152,7 @@ function restoreFromHistory(eventId) {
 
 module.exports = {
   getAll,
+  getItem,
   addItem,
   updateItem,
   deleteItem,

@@ -2,7 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 const fs = require("fs");
-const { PORT, SESSION_SECRET, CLIENT_DIST } = require("./config");
+const { PORT, SESSION_SECRET, CLIENT_DIST, UPLOADS_DIR } = require("./config");
 const timelineRoutes = require("./routes/timeline.routes");
 const themesRoutes = require("./routes/themes.routes");
 const authRoutes = require("./routes/auth.routes");
@@ -27,6 +27,7 @@ app.use("/api/themes", themesRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/events", eventsRoutes);
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST));

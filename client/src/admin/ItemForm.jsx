@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ImageManager } from "./ImageManager";
 
 const TYPES = [
   { value: "holiday", label: "חג / חופשה" },
@@ -160,6 +161,12 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
         />
         יש צורך להביא אוכל
       </label>
+      {initial && (
+        <label>
+          תמונות
+          <ImageManager itemId={initial.id} initialImages={initial.detail?.images || []} />
+        </label>
+      )}
       {error && <p className="error-text">{error}</p>}
       <div className="admin-actions">
         <button className="btn" type="submit" disabled={busy}>

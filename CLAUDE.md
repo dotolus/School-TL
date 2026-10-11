@@ -31,10 +31,12 @@ There is no test suite configured.
 `server/data/timeline.json` is the single source of truth, a flat array of items (no nested month grouping — simpler than the original `SCHOOL_YEAR` structure):
 ```
 { id, type: "holiday"|"test"|"notice"|"project", m: 1-12, y, title, short, full,
-  detail: { pages?, words?[], links?[{label,url,ph?}] }, "required-white-shirt"?: boolean }
+  detail: { pages?, words?[], links?[{label,url,ph?}], images?[{id,url}] }, "required-white-shirt"?: boolean }
 ```
 `required-white-shirt` and `required-food` (both optional, default `false`) mark an item that needs a white shirt (e.g. sports day) or that parents should send food for (e.g. a class party). The viewer renders a pulsing badge next to such items — `client/src/viewer/WhiteShirtIcon.jsx` / `FoodIcon.jsx`, sharing the `.reminder-badge` pulse styling in `timeline.css` — to draw attention; an item can carry both flags at once. Adding another such reminder flag later means: a new optional boolean in `validateItemInput`/`addItem` (`timelineStore.js`), a new icon component reusing `.reminder-badge`, a render check in `ItemRow.jsx`/`ItemDetail.jsx`, and a checkbox in `ItemForm.jsx`.
 Hebrew month names are derived from a month-number lookup (`server/services/hebrewMonths.js`, mirrored in `client/src/hebrewMonths.js`) rather than stored per item. The viewer (`client/src/viewer/ViewerPage.jsx`) groups items by `(y, m)` and sorts chronologically to rebuild the month blocks.
+
+`detail.images` holds `{id, url}` entries pointing at files under `server/data/uploads/<itemId>/` (gitignored runtime content, served publicly and statically at `/uploads/...`). Images are uploaded/removed via dedicated admin-only sub-routes (`POST`/`DELETE /api/timeline/items/:id/images[/:imageId]` in `timeline.routes.js`, multipart via `multer`, server-generated filenames only) which go through the normal `timelineStore.updateItem` path underneath, so image changes are validated and show up in history like any other edit. Deleting an image reference never deletes the file from disk (so old history snapshots referencing it still resolve) — a deliberate, unbounded tradeoff like the `history.jsonl` retention gap. In the viewer, clicking a thumbnail (`ItemDetail.jsx`) opens it in `client/src/viewer/Lightbox.jsx` (a full-page in-app overlay with zoom buttons + mouse wheel, Escape/backdrop/× to close — never a plain `<a href>`, so it never triggers a browser download) via the `LightboxProvider` context (`client/src/viewer/LightboxProvider.jsx`, wrapped around the app in `App.jsx` next to `ThemeProvider`) so any component can call `useLightbox().open(url)` without prop-drilling.
 
 `server/services/timelineStore.js` owns all reads/writes: in-memory cache, atomic writes (tmp file + `fs.rename`), and input validation (`validateItemInput`). Never write `timeline.json` directly from a route handler — go through this module.
 
@@ -44,6 +46,7 @@ Themes are a separate file, `server/data/themes.json`: `{ activeThemeId, themes:
 
 - `GET /api/timeline` — public, full item list.
 - `POST /api/timeline/items`, `PUT /api/timeline/items/:id`, `DELETE /api/timeline/items/:id` — admin-only (`requireAuth` middleware).
+- `POST /api/timeline/items/:id/images` (multipart, field `image`), `DELETE /api/timeline/items/:id/images/:imageId` — admin-only; see **Data model** above for the images mechanism.
 - `GET /api/themes` — public. `PUT /api/themes/active` — admin-only.
 - `POST /api/auth/login` (checks `ADMIN_PASSWORD`, sets `express-session` cookie), `POST /api/auth/logout`, `GET /api/auth/me`.
 - `GET /api/history?itemId=&limit=`, `POST /api/history/:eventId/restore` — admin-only, see **History & recovery** below.
