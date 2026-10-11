@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { TIMELINE_FILE, DATA_DIR } = require("../config");
+const historyStore = require("./historyStore");
 
 const VALID_TYPES = new Set(["holiday", "test", "notice", "project"]);
 
@@ -89,6 +90,7 @@ function addItem(input) {
   };
   data.items.push(item);
   saveAtomic(data);
+  historyStore.append({ op: "create", itemId: item.id, title: item.title, before: null, after: item });
   return item;
 }
 
@@ -97,9 +99,11 @@ function updateItem(id, input) {
   const data = load();
   const idx = data.items.findIndex((it) => it.id === id);
   if (idx === -1) return null;
-  const updated = { ...data.items[idx], ...input, id };
+  const before = data.items[idx];
+  const updated = { ...before, ...input, id };
   data.items[idx] = updated;
   saveAtomic(data);
+  historyStore.append({ op: "update", itemId: id, title: updated.title, before, after: updated });
   return updated;
 }
 
@@ -107,9 +111,39 @@ function deleteItem(id) {
   const data = load();
   const idx = data.items.findIndex((it) => it.id === id);
   if (idx === -1) return false;
-  data.items.splice(idx, 1);
+  const [deleted] = data.items.splice(idx, 1);
   saveAtomic(data);
+  historyStore.append({ op: "delete", itemId: id, title: deleted.title, before: deleted, after: null });
   return true;
 }
 
-module.exports = { getAll, addItem, updateItem, deleteItem, validateItemInput };
+function restoreFromHistory(eventId) {
+  const entry = historyStore.get(eventId);
+  if (!entry) return null;
+  const snapshot = entry.op === "delete" ? entry.before : entry.after;
+  if (!snapshot) return null;
+  const data = load();
+  const idx = data.items.findIndex((it) => it.id === snapshot.id);
+  const previousState = idx === -1 ? null : data.items[idx];
+  const restored = { ...snapshot };
+  if (idx === -1) data.items.push(restored);
+  else data.items[idx] = restored;
+  saveAtomic(data);
+  historyStore.append({
+    op: "restore",
+    itemId: restored.id,
+    title: restored.title,
+    before: previousState,
+    after: restored,
+  });
+  return restored;
+}
+
+module.exports = {
+  getAll,
+  addItem,
+  updateItem,
+  deleteItem,
+  validateItemInput,
+  restoreFromHistory,
+};

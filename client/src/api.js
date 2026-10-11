@@ -24,4 +24,13 @@ export const api = {
   login: (password) => request("/auth/login", { method: "POST", body: JSON.stringify({ password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request("/auth/me"),
+
+  getHistory: ({ itemId, limit } = {}) => {
+    const params = new URLSearchParams();
+    if (itemId) params.set("itemId", itemId);
+    if (limit) params.set("limit", limit);
+    const qs = params.toString();
+    return request(`/history${qs ? `?${qs}` : ""}`);
+  },
+  restoreHistoryEvent: (eventId) => request(`/history/${eventId}/restore`, { method: "POST" }),
 };
