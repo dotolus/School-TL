@@ -1,0 +1,79 @@
+name: Main branch test report
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  report:
+    name: Full test report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install server dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm ci
+        working-directory: client
+
+      - name: Run unit / component / integration tests
+        id: unit
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee vitest-output.log
+
+      - name: Install Playwright's Chromium (with OS deps)
+        if: always()
+        run: npx playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        id: e2e
+        if: always()
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee e2e-output.log
+
+      - name: Build report summary
+        if: always()
+        run: |
+          {
+            echo "## Test report for \`main\` @ ${GITHUB_SHA}"
+            echo ""
+            echo "| Suite | Result |"
+            echo "|---|---|"
+            echo "| Unit / component / integration | ${{ steps.unit.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo "| End-to-end | ${{ steps.e2e.outcome == 'success' && '✅ passed' || '❌ failed' }} |"
+            echo ""
+            echo "<details><summary>Unit/integration output</summary>"
+            echo ""
+            echo '```'
+            tail -n 200 vitest-output.log 2>/dev/null || echo "(no output captured)"
+            echo '```'
+            echo "</details>"
+            echo ""
+            echo "<details><summary>End-to-end output</summary>"
+            echo ""
+            echo '```'
+            tail -n 200 e2e-output.log 2>/dev/null || echo "(no output captured)"
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-test-report-${{ github.sha }}
+          path: |
+            vitest-output.log
+            e2e-output.log
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore

@@ -45,6 +45,8 @@ A **Claude Code hook** (`.claude/settings.json`, `PreToolUse`/`Bash`, filtered v
 
 `.github/workflows/ci.yml` runs on every `push` and `pull_request`: two parallel jobs, `test` (`npm test`) and `e2e` (installs Playwright's Chromium + OS deps, then `npm run test:e2e`). The e2e job uploads the Playwright HTML report as a build artifact if it fails (`playwright.config.js` only generates that report when `CI` is set — locally it's just the plain `list` reporter).
 
+`.github/workflows/main-report.yml` is a separate, narrower workflow: it only triggers on a `push` to `main` (i.e. after a PR merges), and — unlike `ci.yml`'s e2e job, which only uploads its report on failure — it **always** runs both suites to completion and publishes a report regardless of outcome: a pass/fail table plus the tail of each suite's output written to the run's job summary (`$GITHUB_STEP_SUMMARY`), and the full logs + Playwright HTML report uploaded as a single `main-test-report-<sha>` artifact. It uses `if: always()` on the e2e/summary/upload steps specifically so a failing unit-test step doesn't skip the rest of the job and leave `main` without a report. There's no real GitHub webhook involved — a webhook only POSTs an event payload to an external endpoint and can't run anything itself, so "run tests and report after main updates" is implemented as this push-triggered Action instead.
+
 ## Architecture
 
 ### Data model
