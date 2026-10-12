@@ -12,7 +12,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "release:major": "node scripts/bump-version.js major",
+    "release:minor": "node scripts/bump-version.js minor",
+    "release:patch": "node scripts/bump-version.js patch"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

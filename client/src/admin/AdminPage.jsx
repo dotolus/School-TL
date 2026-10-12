@@ -7,6 +7,7 @@ import { ItemList } from "./ItemList";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { HistoryPanel } from "./HistoryPanel";
 import { ImportPanel } from "./ImportPanel";
+import { APP_VERSION } from "../version";
 
 export function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(null);
@@ -46,7 +47,9 @@ export function AdminPage() {
   return (
     <div className="admin-page">
       <div className="admin-card">
-        <h2>ניהול ציר שנת הלימודים</h2>
+        <h2>
+          ניהול ציר שנת הלימודים <span className="app-version">v{APP_VERSION}</span>
+        </h2>
         <div className="admin-actions">
           <Link className="btn secondary" to="/">
             חזרה לציר

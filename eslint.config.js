@@ -34,7 +34,7 @@ module.exports = [
 
   // Server: plain Node CommonJS.
   {
-    files: ["server/**/*.js", "*.config.js", ".claude/hooks/**/*.js"],
+    files: ["server/**/*.js", "scripts/**/*.js", "*.config.js", ".claude/hooks/**/*.js"],
     languageOptions: {
       sourceType: "commonjs",
       ecmaVersion: 2022,
@@ -62,7 +62,7 @@ module.exports = [
       ecmaVersion: 2022,
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { ...globals.browser, ...vitestGlobals },
+      globals: { ...globals.browser, ...vitestGlobals, __APP_VERSION__: "readonly" },
     },
     settings: { react: { version: "detect" } },
     rules: {

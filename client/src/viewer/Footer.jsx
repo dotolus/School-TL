@@ -1,3 +1,5 @@
+import { APP_VERSION } from "../version";
+
 export function Footer() {
   return (
     <footer className="note">
@@ -5,6 +7,7 @@ export function Footer() {
       החינוך; טווחי סוכות, חנוכה וסיום שנה״ל מסומנים כ״בקירוב״ ורצוי לאמת מול לוח בית הספר
       הספציפי. פריטי המבחנים, ההודעות והעבודות הם <b>דוגמאות לעריכה</b> — כדי להתאים אותם, היכנסו
       לעמוד <a href="/admin">הניהול</a> וערכו, הוסיפו או מחקו פריטים משם.
+      <p className="app-version">גרסה {APP_VERSION}</p>
     </footer>
   );
 }

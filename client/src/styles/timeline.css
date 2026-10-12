@@ -222,6 +222,8 @@ footer.note{
 footer.note b{ color:var(--ink); }
 footer.note code{ background:var(--accent-soft); padding:1px 5px; border-radius:4px; }
 
+.app-version{ font-size:.72rem; color:var(--ink-soft); margin:8px 0 0; }
+
 /* ---------- admin ---------- */
 .admin-page{ max-width: 760px; margin: 0 auto; padding-block: 28px 64px; }
 .admin-card{
