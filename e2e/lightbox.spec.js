@@ -11,7 +11,9 @@ test("uploading an image and opening/zooming/closing it in the viewer's lightbox
   const row = page.locator(".admin-item-row", { hasText: title });
   await row.getByRole("button", { name: "ערוך" }).click();
 
-  await page.locator('input[type="file"]').setInputFiles(path.join(__dirname, "fixtures", "test.png"));
+  await page
+    .locator('input[type="file"][accept="image/*"]')
+    .setInputFiles(path.join(__dirname, "fixtures", "test.png"));
   await page.getByRole("button", { name: "העלאה", exact: true }).click();
   await expect(page.locator(".image-thumb img")).toBeVisible();
 
