@@ -17,6 +17,22 @@ export const api = {
   addItem: (item) => request("/timeline/items", { method: "POST", body: JSON.stringify(item) }),
   updateItem: (id, item) => request(`/timeline/items/${id}`, { method: "PUT", body: JSON.stringify(item) }),
   deleteItem: (id) => request(`/timeline/items/${id}`, { method: "DELETE" }),
+  importTimeline: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/timeline/import", {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(body.error || `Request failed: ${res.status}`);
+      err.details = body.details;
+      throw err;
+    }
+    return body;
+  },
 
   getThemes: () => request("/themes"),
   setActiveTheme: (id) => request("/themes/active", { method: "PUT", body: JSON.stringify({ id }) }),

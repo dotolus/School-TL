@@ -22,6 +22,8 @@ Config is via env vars (see `.env.example`, loaded through `dotenv`): `PORT`, `A
 
 ### Tests
 
+**Rule: every new implementation (new endpoint, new `timelineStore`/service function, new business rule or validation, new non-trivial UI behavior) must come with tests covering the new business requirement(s), and the full suite (`npm test`) must pass alongside them before the work is considered done.** This isn't optional polish — a feature without a test is treated as incomplete, not as a follow-up. Match the existing per-area test shape rather than inventing a new one: `server/services/__tests__/*.test.js` for store/service logic (validation rules, computed results), `server/__tests__/*.integration.test.js` for routes (via `createTestApp()` + `supertest`), `client/src/**/__tests__/*.test.jsx` for component behavior worth asserting on. If a change doesn't fit any existing test file, add a new one next to the code it covers rather than skipping coverage.
+
 - `npm test` — Vitest: unit + component + integration, fast, no browser. Single run per invocation (`npm run test:watch` for watch mode).
 - Single file/test: `npx vitest run path/to/thing.test.js` (or `-t "test name"` to filter by name); `npx playwright test e2e/viewer.spec.js` for one e2e spec.
 - `npm run test:e2e` — builds the client then runs Playwright against the real built app (`e2e/*.spec.js`). First time: `npx playwright install chromium`.
@@ -66,6 +68,7 @@ Themes are a separate file, `server/data/themes.json`: `{ activeThemeId, themes:
 - `GET /api/timeline` — public, full item list.
 - `POST /api/timeline/items`, `PUT /api/timeline/items/:id`, `DELETE /api/timeline/items/:id` — admin-only (`requireAuth` middleware).
 - `POST /api/timeline/items/:id/images` (multipart, field `image`), `DELETE /api/timeline/items/:id/images/:imageId` — admin-only; see **Data model** above for the images mechanism.
+- `POST /api/timeline/import` (multipart, field `file`, a `.json` file) — admin-only; bulk-loads items in the same shape `GET /api/timeline` returns (`{ items: [...] }`, or a bare array). This is the backing endpoint for the "ייבוא נתונים" panel on `/admin` (`client/src/admin/ImportPanel.jsx`). Semantics, deliberately chosen over simpler alternatives: **merge by id** (an item whose `id` matches an existing one overwrites it like `updateItem`; everything else is created like `addItem`, with a fresh id) and **all-or-nothing validation** (`timelineStore.importItems` runs `validateItemInput` over every item first and aborts the whole import — writing nothing — if any one of them fails, returning `{ error, details: [{index, error}] }`). On success the whole batch is one `saveAtomic` call, but history still gets one `create`/`update` entry per item (`server/services/timelineStore.js`), so each imported item remains individually revertable via the normal history/restore flow.
 - `GET /api/themes` — public. `PUT /api/themes/active` — admin-only.
 - `POST /api/auth/login` (checks `ADMIN_PASSWORD`, sets `express-session` cookie), `POST /api/auth/logout`, `GET /api/auth/me`.
 - `GET /api/history?itemId=&limit=`, `POST /api/history/:eventId/restore` — admin-only, see **History & recovery** below.

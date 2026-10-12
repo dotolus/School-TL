@@ -43,8 +43,49 @@ function uploadSingleImage(req, res, next) {
   });
 }
 
+const importUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/json" && !file.originalname.endsWith(".json")) {
+      return cb(new Error("Only JSON files are allowed"));
+    }
+    cb(null, true);
+  },
+});
+
+function uploadImportFile(req, res, next) {
+  importUpload.single("file")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}
+
 router.get("/", (req, res) => {
   res.json({ items: store.getAll() });
+});
+
+router.post("/import", requireAuth, uploadImportFile, (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file provided" });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(req.file.buffer.toString("utf8"));
+  } catch {
+    return res.status(400).json({ error: "File is not valid JSON" });
+  }
+
+  const items = Array.isArray(parsed) ? parsed : parsed.items;
+  if (!Array.isArray(items)) {
+    return res.status(400).json({ error: "File must contain an 'items' array (matching GET /api/timeline)" });
+  }
+
+  try {
+    const result = store.importItems(items);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message, details: err.details });
+  }
 });
 
 router.post("/items", requireAuth, (req, res) => {

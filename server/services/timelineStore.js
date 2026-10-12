@@ -128,6 +128,71 @@ function deleteItem(id) {
   return true;
 }
 
+function importItems(inputItems) {
+  if (!Array.isArray(inputItems)) {
+    throw new Error("items must be an array");
+  }
+  const errors = [];
+  inputItems.forEach((input, index) => {
+    try {
+      validateItemInput(input);
+    } catch (err) {
+      errors.push({ index, error: err.message });
+    }
+  });
+  if (errors.length) {
+    const err = new Error("Import validation failed");
+    err.details = errors;
+    throw err;
+  }
+
+  const data = load();
+  const historyEntries = [];
+  const result = { created: 0, updated: 0 };
+
+  for (const input of inputItems) {
+    const existingIdx = input.id ? data.items.findIndex((it) => it.id === input.id) : -1;
+    if (existingIdx !== -1) {
+      const before = data.items[existingIdx];
+      const updated = {
+        ...before,
+        type: input.type,
+        m: input.m,
+        y: input.y,
+        title: input.title,
+        short: input.short,
+        full: input.full,
+        detail: input.detail || {},
+        "required-white-shirt": Boolean(input["required-white-shirt"]),
+        "required-food": Boolean(input["required-food"]),
+      };
+      data.items[existingIdx] = updated;
+      historyEntries.push({ op: "update", itemId: updated.id, title: updated.title, before, after: updated });
+      result.updated += 1;
+    } else {
+      const item = {
+        id: crypto.randomUUID(),
+        type: input.type,
+        m: input.m,
+        y: input.y,
+        title: input.title,
+        short: input.short,
+        full: input.full,
+        detail: input.detail || {},
+        "required-white-shirt": Boolean(input["required-white-shirt"]),
+        "required-food": Boolean(input["required-food"]),
+      };
+      data.items.push(item);
+      historyEntries.push({ op: "create", itemId: item.id, title: item.title, before: null, after: item });
+      result.created += 1;
+    }
+  }
+
+  saveAtomic(data);
+  historyEntries.forEach((entry) => historyStore.append(entry));
+  return result;
+}
+
 function restoreFromHistory(eventId) {
   const entry = historyStore.get(eventId);
   if (!entry) return null;
@@ -157,5 +222,6 @@ module.exports = {
   updateItem,
   deleteItem,
   validateItemInput,
+  importItems,
   restoreFromHistory,
 };

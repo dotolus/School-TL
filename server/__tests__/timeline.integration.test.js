@@ -65,3 +65,85 @@ describe("timeline CRUD", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("POST /api/timeline/import", () => {
+  const asFile = (payload) => Buffer.from(JSON.stringify(payload), "utf8");
+
+  it("accepts the shape returned by GET /api/timeline and creates new items", async () => {
+    const res = await agent
+      .post("/api/timeline/import")
+      .attach("file", asFile({ items: [validItem(), validItem({ title: "second" })] }), "data.json");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ created: 2, updated: 0 });
+
+    const list = await request(app).get("/api/timeline");
+    expect(list.body.items).toHaveLength(2);
+  });
+
+  it("also accepts a bare array of items", async () => {
+    const res = await agent
+      .post("/api/timeline/import")
+      .attach("file", asFile([validItem()]), "data.json");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ created: 1, updated: 0 });
+  });
+
+  it("updates existing items whose id matches and creates the rest", async () => {
+    const created = await agent.post("/api/timeline/items").send(validItem({ title: "original" }));
+    const id = created.body.id;
+
+    const res = await agent.post("/api/timeline/import").attach(
+      "file",
+      asFile({
+        items: [
+          { ...validItem({ title: "updated" }), id },
+          validItem({ title: "new one" }),
+        ],
+      }),
+      "data.json"
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ created: 1, updated: 1 });
+
+    const list = await request(app).get("/api/timeline");
+    expect(list.body.items).toHaveLength(2);
+    expect(list.body.items.find((it) => it.id === id).title).toBe("updated");
+  });
+
+  it("imports nothing and reports per-item errors when any item is invalid", async () => {
+    const res = await agent
+      .post("/api/timeline/import")
+      .attach("file", asFile({ items: [validItem(), validItem({ type: "bogus" })] }), "data.json");
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Import validation failed/);
+    expect(res.body.details).toEqual([{ index: 1, error: expect.stringMatching(/type must be one of/) }]);
+
+    const list = await request(app).get("/api/timeline");
+    expect(list.body.items).toHaveLength(0);
+  });
+
+  it("rejects a non-JSON file", async () => {
+    const res = await agent
+      .post("/api/timeline/import")
+      .attach("file", Buffer.from("not json"), "data.txt");
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects malformed JSON content", async () => {
+    const res = await agent
+      .post("/api/timeline/import")
+      .attach("file", Buffer.from("{not valid json"), "data.json");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/not valid JSON/);
+  });
+
+  it("requires auth", async () => {
+    const res = await request(app)
+      .post("/api/timeline/import")
+      .attach("file", asFile({ items: [validItem()] }), "data.json");
+    expect(res.status).toBe(401);
+  });
+});

@@ -116,3 +116,42 @@ describe("timelineStore CRUD + history integration", () => {
     expect(store.restoreFromHistory("does-not-exist")).toBeNull();
   });
 });
+
+describe("importItems", () => {
+  it("creates items that have no matching id and updates ones that do", () => {
+    const existing = store.addItem(validItem({ title: "original" }));
+
+    const result = store.importItems([
+      { ...validItem({ title: "replaced" }), id: existing.id },
+      validItem({ title: "brand new" }),
+    ]);
+
+    expect(result).toEqual({ created: 1, updated: 1 });
+    expect(store.getAll()).toHaveLength(2);
+    expect(store.getItem(existing.id).title).toBe("replaced");
+  });
+
+  it("logs a history entry per imported item", () => {
+    const existing = store.addItem(validItem({ title: "original" }));
+    store.importItems([
+      { ...validItem({ title: "replaced" }), id: existing.id },
+      validItem({ title: "brand new" }),
+    ]);
+
+    const historyStore = require("../historyStore");
+    const events = historyStore.list();
+    expect(events.filter((e) => e.op === "update")).toHaveLength(1);
+    expect(events.filter((e) => e.op === "create")).toHaveLength(2); // original add + import add
+  });
+
+  it("is all-or-nothing: a single invalid item aborts the whole import", () => {
+    expect(() => store.importItems([validItem(), validItem({ type: "bogus" })])).toThrow(
+      /Import validation failed/
+    );
+    expect(store.getAll()).toHaveLength(0);
+  });
+
+  it("rejects a non-array payload", () => {
+    expect(() => store.importItems({ not: "an array" })).toThrow(/items must be an array/);
+  });
+});
