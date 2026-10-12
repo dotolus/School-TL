@@ -6,6 +6,7 @@ import { ItemForm } from "./ItemForm";
 import { ItemList } from "./ItemList";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { HistoryPanel } from "./HistoryPanel";
+import { ImportPanel } from "./ImportPanel";
 
 export function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(null);
@@ -81,6 +82,11 @@ export function AdminPage() {
             }}
           />
         )}
+      </div>
+
+      <div className="admin-card">
+        <h2>ייבוא נתונים</h2>
+        <ImportPanel onImported={loadItems} />
       </div>
 
       <div className="admin-card">
