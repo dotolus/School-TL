@@ -1,6 +1,6 @@
-const fs = require("fs");
-const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 
 const SERVER_DIR = path.join(__dirname, "..", "..");
 
@@ -10,8 +10,30 @@ function clearServerModuleCache() {
   }
 }
 
-let tmpDir;
+let mongod;
 let store;
+let historyStore;
+
+beforeAll(async () => {
+  mongod = await MongoMemoryServer.create();
+});
+
+afterAll(async () => {
+  await mongod.stop();
+});
+
+beforeEach(() => {
+  process.env.MONGODB_URI = mongod.getUri();
+  process.env.MONGODB_DB_NAME = `eq_ppt_test_${crypto.randomUUID()}`;
+  clearServerModuleCache();
+  store = require("../timelineStore");
+  historyStore = require("../historyStore");
+});
+
+afterEach(() => {
+  delete process.env.MONGODB_URI;
+  delete process.env.MONGODB_DB_NAME;
+});
 
 function validItem(overrides = {}) {
   return {
@@ -24,18 +46,6 @@ function validItem(overrides = {}) {
     ...overrides,
   };
 }
-
-beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "eq-ppt-timeline-"));
-  process.env.DATA_DIR = tmpDir;
-  clearServerModuleCache();
-  store = require("../timelineStore");
-});
-
-afterEach(() => {
-  delete process.env.DATA_DIR;
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-});
 
 describe("validateItemInput", () => {
   it("accepts a well-formed item", () => {
@@ -70,88 +80,107 @@ describe("validateItemInput", () => {
 });
 
 describe("timelineStore CRUD + history integration", () => {
-  it("addItem/updateItem/deleteItem round-trip and persist to disk", () => {
-    const created = store.addItem(validItem({ title: "v1" }));
+  it("addItem/updateItem/deleteItem round-trip", async () => {
+    const created = await store.addItem(validItem({ title: "v1" }));
     expect(created.id).toBeTruthy();
-    expect(store.getAll()).toHaveLength(1);
+    expect(await store.getAll()).toHaveLength(1);
 
-    const updated = store.updateItem(created.id, validItem({ title: "v2" }));
+    const updated = await store.updateItem(created.id, validItem({ title: "v2" }));
     expect(updated.title).toBe("v2");
 
-    expect(store.deleteItem(created.id)).toBe(true);
-    expect(store.getAll()).toHaveLength(0);
-    expect(store.deleteItem(created.id)).toBe(false);
+    expect(await store.deleteItem(created.id)).toBe(true);
+    expect(await store.getAll()).toHaveLength(0);
+    expect(await store.deleteItem(created.id)).toBe(false);
   });
 
-  it("restoreFromHistory undeletes using the delete entry's before-snapshot", () => {
-    const created = store.addItem(validItem({ title: "to delete" }));
-    store.deleteItem(created.id);
-    expect(store.getItem(created.id)).toBeNull();
+  it("a soft-deleted item disappears from getAll/getItem but its document survives for history", async () => {
+    const created = await store.addItem(validItem({ title: "to delete" }));
+    await store.deleteItem(created.id);
 
-    const historyStore = require("../historyStore");
-    const deleteEntry = historyStore.list({ itemId: created.id }).find((e) => e.op === "delete");
+    expect(await store.getItem(created.id)).toBeNull();
+    expect(await store.getAll()).toEqual([]);
 
-    const restored = store.restoreFromHistory(deleteEntry.id);
+    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
+    expect(deleteEntry).toBeTruthy();
+    expect(deleteEntry.before.title).toBe("to delete");
+  });
+
+  it("restoreFromHistory undeletes using the delete entry's before-snapshot", async () => {
+    const created = await store.addItem(validItem({ title: "to delete" }));
+    await store.deleteItem(created.id);
+    expect(await store.getItem(created.id)).toBeNull();
+
+    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
+    const restored = await store.restoreFromHistory(deleteEntry.id);
     expect(restored.title).toBe("to delete");
-    expect(store.getItem(created.id)).not.toBeNull();
+    expect(await store.getItem(created.id)).not.toBeNull();
   });
 
-  it("restoreFromHistory reverts properties using an update entry's after-snapshot", () => {
-    const created = store.addItem(validItem({ title: "v1" }));
-    store.updateItem(created.id, validItem({ title: "v2" }));
-    store.updateItem(created.id, validItem({ title: "v3" }));
+  it("restoreFromHistory reverts properties using an update entry's after-snapshot", async () => {
+    const created = await store.addItem(validItem({ title: "v1" }));
+    await store.updateItem(created.id, validItem({ title: "v2" }));
+    await store.updateItem(created.id, validItem({ title: "v3" }));
 
-    const historyStore = require("../historyStore");
-    const firstUpdate = historyStore
-      .list({ itemId: created.id })
-      .filter((e) => e.op === "update")
-      .at(-1); // oldest update = v1 -> v2
+    const updates = (await historyStore.list({ itemId: created.id })).filter((e) => e.op === "update");
+    const firstUpdate = updates.at(-1); // oldest update = v1 -> v2
 
-    const restored = store.restoreFromHistory(firstUpdate.id);
+    const restored = await store.restoreFromHistory(firstUpdate.id);
     expect(restored.title).toBe("v2");
-    expect(store.getItem(created.id).title).toBe("v2");
+    expect((await store.getItem(created.id)).title).toBe("v2");
   });
 
-  it("restoreFromHistory returns null for an unknown event id", () => {
-    expect(store.restoreFromHistory("does-not-exist")).toBeNull();
+  it("restoreFromHistory returns null for an unknown event id", async () => {
+    expect(await store.restoreFromHistory("does-not-exist")).toBeNull();
+  });
+});
+
+describe("dataset scoping", () => {
+  it("only surfaces items tagged with the active school/class/period", async () => {
+    await store.addItem(validItem({ title: "in dataset A" }));
+
+    process.env.ACTIVE_SCHOOL = "otherschool";
+    clearServerModuleCache();
+    const otherStore = require("../timelineStore");
+    expect(await otherStore.getAll()).toEqual([]);
+
+    delete process.env.ACTIVE_SCHOOL;
   });
 });
 
 describe("importItems", () => {
-  it("creates items that have no matching id and updates ones that do", () => {
-    const existing = store.addItem(validItem({ title: "original" }));
+  it("creates items that have no matching id and updates ones that do", async () => {
+    const existing = await store.addItem(validItem({ title: "original" }));
 
-    const result = store.importItems([
+    const result = await store.importItems([
       { ...validItem({ title: "replaced" }), id: existing.id },
       validItem({ title: "brand new" }),
     ]);
 
     expect(result).toEqual({ created: 1, updated: 1 });
-    expect(store.getAll()).toHaveLength(2);
-    expect(store.getItem(existing.id).title).toBe("replaced");
+    expect(await store.getAll()).toHaveLength(2);
+    expect((await store.getItem(existing.id)).title).toBe("replaced");
   });
 
-  it("logs a history entry per imported item", () => {
-    const existing = store.addItem(validItem({ title: "original" }));
-    store.importItems([
+  it("logs a history entry per imported item", async () => {
+    const existing = await store.addItem(validItem({ title: "original" }));
+    await store.importItems([
       { ...validItem({ title: "replaced" }), id: existing.id },
       validItem({ title: "brand new" }),
     ]);
 
-    const historyStore = require("../historyStore");
-    const events = historyStore.list();
-    expect(events.filter((e) => e.op === "update")).toHaveLength(1);
-    expect(events.filter((e) => e.op === "create")).toHaveLength(2); // original add + import add
+    const allEvents = await historyStore.list();
+    expect(allEvents.filter((e) => e.op === "update")).toHaveLength(1);
+    expect(allEvents.filter((e) => e.op === "create")).toHaveLength(2); // original add + import add
   });
 
-  it("is all-or-nothing: a single invalid item aborts the whole import", () => {
-    expect(() => store.importItems([validItem(), validItem({ type: "bogus" })])).toThrow(
+  it("is all-or-nothing on validation: a single invalid item aborts before any write", async () => {
+    await expect(store.importItems([validItem(), validItem({ type: "bogus" })])).rejects.toThrow(
       /Import validation failed/
     );
-    expect(store.getAll()).toHaveLength(0);
+    expect(await store.getAll()).toHaveLength(0);
   });
 
-  it("rejects a non-array payload", () => {
-    expect(() => store.importItems({ not: "an array" })).toThrow(/items must be an array/);
+  it("rejects a non-array payload", async () => {
+    await expect(store.importItems({ not: "an array" })).rejects.toThrow(/items must be an array/);
   });
 });

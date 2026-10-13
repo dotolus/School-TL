@@ -1,11 +1,10 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
 const store = require("../services/timelineStore");
+const imageStore = require("../services/imageStore");
 const { requireAuth } = require("../middleware/auth");
-const { UPLOADS_DIR } = require("../config");
+const asyncHandler = require("../utils/asyncHandler");
 
 const router = express.Router();
 
@@ -17,16 +16,7 @@ const EXT_BY_MIME = {
 };
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const dir = path.join(UPLOADS_DIR, req.params.id);
-      fs.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-      cb(null, `${crypto.randomUUID()}${EXT_BY_MIME[file.mimetype]}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!EXT_BY_MIME[file.mimetype]) {
@@ -61,57 +51,77 @@ function uploadImportFile(req, res, next) {
   });
 }
 
-router.get("/", (req, res) => {
-  res.json({ items: store.getAll() });
-});
+router.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    res.json({ items: await store.getAll() });
+  })
+);
 
-router.post("/import", requireAuth, uploadImportFile, (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file provided" });
+router.post(
+  "/import",
+  requireAuth,
+  uploadImportFile,
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "No file provided" });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(req.file.buffer.toString("utf8"));
-  } catch {
-    return res.status(400).json({ error: "File is not valid JSON" });
-  }
+    let parsed;
+    try {
+      parsed = JSON.parse(req.file.buffer.toString("utf8"));
+    } catch {
+      return res.status(400).json({ error: "File is not valid JSON" });
+    }
 
-  const items = Array.isArray(parsed) ? parsed : parsed.items;
-  if (!Array.isArray(items)) {
-    return res.status(400).json({ error: "File must contain an 'items' array (matching GET /api/timeline)" });
-  }
+    const items = Array.isArray(parsed) ? parsed : parsed.items;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ error: "File must contain an 'items' array (matching GET /api/timeline)" });
+    }
 
-  try {
-    const result = store.importItems(items);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message, details: err.details });
-  }
-});
+    try {
+      const result = await store.importItems(items);
+      res.json(result);
+    } catch (err) {
+      res.status(400).json({ error: err.message, details: err.details });
+    }
+  })
+);
 
-router.post("/items", requireAuth, (req, res) => {
-  try {
-    const item = store.addItem(req.body);
-    res.status(201).json(item);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.post(
+  "/items",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    try {
+      const item = await store.addItem(req.body);
+      res.status(201).json(item);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  })
+);
 
-router.put("/items/:id", requireAuth, (req, res) => {
-  try {
-    const updated = store.updateItem(req.params.id, req.body);
-    if (!updated) return res.status(404).json({ error: "Item not found" });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+router.put(
+  "/items/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    try {
+      const updated = await store.updateItem(req.params.id, req.body);
+      if (!updated) return res.status(404).json({ error: "Item not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  })
+);
 
-router.delete("/items/:id", requireAuth, (req, res) => {
-  const deleted = store.deleteItem(req.params.id);
-  if (!deleted) return res.status(404).json({ error: "Item not found" });
-  res.status(204).end();
-});
+router.delete(
+  "/items/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const deleted = await store.deleteItem(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Item not found" });
+    res.status(204).end();
+  })
+);
 
 function withImages(item, images) {
   return {
@@ -128,30 +138,43 @@ function withImages(item, images) {
 }
 
 function requireExistingItem(req, res, next) {
-  if (!store.getItem(req.params.id)) {
-    req.resume(); // drain the still-uploading body before rejecting
-    return res.status(404).json({ error: "Item not found" });
-  }
-  next();
+  store.getItem(req.params.id).then((item) => {
+    if (!item) {
+      req.resume(); // drain the still-uploading body before rejecting
+      return res.status(404).json({ error: "Item not found" });
+    }
+    next();
+  }, next);
 }
 
-router.post("/items/:id/images", requireAuth, requireExistingItem, uploadSingleImage, (req, res) => {
-  const item = store.getItem(req.params.id);
-  if (!req.file) return res.status(400).json({ error: "No image file provided" });
+router.post(
+  "/items/:id/images",
+  requireAuth,
+  requireExistingItem,
+  uploadSingleImage,
+  asyncHandler(async (req, res) => {
+    const item = await store.getItem(req.params.id);
+    if (!req.file) return res.status(400).json({ error: "No image file provided" });
 
-  const image = { id: crypto.randomUUID(), url: `/uploads/${item.id}/${req.file.filename}` };
-  const images = [...(item.detail?.images || []), image];
-  const updated = store.updateItem(item.id, withImages(item, images));
-  res.status(201).json(updated);
-});
+    const { url, publicId } = await imageStore.uploadImage(req.file.buffer, req.file.mimetype, `eq-ppt/${item.id}`);
+    const image = { id: crypto.randomUUID(), url, publicId };
+    const images = [...(item.detail?.images || []), image];
+    const updated = await store.updateItem(item.id, withImages(item, images));
+    res.status(201).json(updated);
+  })
+);
 
-router.delete("/items/:id/images/:imageId", requireAuth, (req, res) => {
-  const item = store.getItem(req.params.id);
-  if (!item) return res.status(404).json({ error: "Item not found" });
+router.delete(
+  "/items/:id/images/:imageId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const item = await store.getItem(req.params.id);
+    if (!item) return res.status(404).json({ error: "Item not found" });
 
-  const images = (item.detail?.images || []).filter((img) => img.id !== req.params.imageId);
-  const updated = store.updateItem(item.id, withImages(item, images));
-  res.json(updated);
-});
+    const images = (item.detail?.images || []).filter((img) => img.id !== req.params.imageId);
+    const updated = await store.updateItem(item.id, withImages(item, images));
+    res.json(updated);
+  })
+);
 
 module.exports = router;

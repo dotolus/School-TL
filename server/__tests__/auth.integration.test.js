@@ -3,8 +3,8 @@ const { createTestApp, cleanupTestApp } = require("./testApp");
 
 let app, tmpDir;
 
-beforeEach(() => {
-  ({ app, tmpDir } = createTestApp());
+beforeEach(async () => {
+  ({ app, tmpDir } = await createTestApp());
 });
 
 afterEach(() => {

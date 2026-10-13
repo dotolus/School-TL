@@ -4,7 +4,7 @@ const { createTestApp, cleanupTestApp } = require("./testApp");
 let app, tmpDir, agent;
 
 beforeEach(async () => {
-  ({ app, tmpDir } = createTestApp());
+  ({ app, tmpDir } = await createTestApp());
   agent = request.agent(app);
   await agent.post("/api/auth/login").send({ password: "test-password" });
 });

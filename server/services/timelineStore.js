@@ -1,36 +1,16 @@
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
-const { TIMELINE_FILE, DATA_DIR } = require("../config");
-const historyStore = require("./historyStore");
+const { getDb } = require("./db");
+const { ACTIVE_SCHOOL, ACTIVE_CLASS, ACTIVE_PERIOD } = require("../config");
 
 const VALID_TYPES = new Set(["holiday", "test", "notice", "project"]);
 
-let cache = null;
-
-function ensureDataDir() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function activeDatasetFilter() {
+  return { school: ACTIVE_SCHOOL, class: ACTIVE_CLASS, period: ACTIVE_PERIOD };
 }
 
-function load() {
-  if (cache) return cache;
-  ensureDataDir();
-  if (!fs.existsSync(TIMELINE_FILE)) {
-    cache = { items: [] };
-    return cache;
-  }
-  const raw = fs.readFileSync(TIMELINE_FILE, "utf8");
-  cache = JSON.parse(raw);
-  if (!Array.isArray(cache.items)) cache.items = [];
-  return cache;
-}
-
-function saveAtomic(data) {
-  ensureDataDir();
-  const tmpFile = path.join(DATA_DIR, `.timeline.${process.pid}.${Date.now()}.tmp`);
-  fs.writeFileSync(tmpFile, JSON.stringify(data, null, 2), "utf8");
-  fs.renameSync(tmpFile, TIMELINE_FILE);
-  cache = data;
+async function events() {
+  const db = await getDb();
+  return db.collection("events");
 }
 
 function validateItemInput(input) {
@@ -76,19 +56,27 @@ function validateItemInput(input) {
   }
 }
 
-function getAll() {
-  return load().items;
+// Strips the internal-only fields (school/class/period/status/history/_id
+// timestamps) so every API response keeps the exact same item shape the
+// file-based store used to return.
+function toExternalItem(doc) {
+  if (!doc) return null;
+  return {
+    id: doc._id,
+    type: doc.type,
+    m: doc.m,
+    y: doc.y,
+    title: doc.title,
+    short: doc.short,
+    full: doc.full,
+    detail: doc.detail || {},
+    "required-white-shirt": Boolean(doc["required-white-shirt"]),
+    "required-food": Boolean(doc["required-food"]),
+  };
 }
 
-function getItem(id) {
-  return load().items.find((it) => it.id === id) || null;
-}
-
-function addItem(input) {
-  validateItemInput(input);
-  const data = load();
-  const item = {
-    id: crypto.randomUUID(),
+function fieldsFromInput(input) {
+  return {
     type: input.type,
     m: input.m,
     y: input.y,
@@ -99,36 +87,75 @@ function addItem(input) {
     "required-white-shirt": Boolean(input["required-white-shirt"]),
     "required-food": Boolean(input["required-food"]),
   };
-  data.items.push(item);
-  saveAtomic(data);
-  historyStore.append({ op: "create", itemId: item.id, title: item.title, before: null, after: item });
-  return item;
 }
 
-function updateItem(id, input) {
+function makeHistoryEntry(partial) {
+  return { id: crypto.randomUUID(), ts: new Date().toISOString(), ...partial };
+}
+
+async function getAll() {
+  const col = await events();
+  const docs = await col.find({ ...activeDatasetFilter(), status: "active" }).toArray();
+  return docs.map(toExternalItem);
+}
+
+async function getItem(id) {
+  const col = await events();
+  const doc = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+  return toExternalItem(doc);
+}
+
+async function addItem(input) {
   validateItemInput(input);
-  const data = load();
-  const idx = data.items.findIndex((it) => it.id === id);
-  if (idx === -1) return null;
-  const before = data.items[idx];
-  const updated = { ...before, ...input, id };
-  data.items[idx] = updated;
-  saveAtomic(data);
-  historyStore.append({ op: "update", itemId: id, title: updated.title, before, after: updated });
-  return updated;
+  const col = await events();
+  const now = new Date().toISOString();
+  const item = {
+    _id: crypto.randomUUID(),
+    ...activeDatasetFilter(),
+    status: "active",
+    ...fieldsFromInput(input),
+    createdAt: now,
+    updatedAt: now,
+  };
+  const external = toExternalItem(item);
+  item.history = [makeHistoryEntry({ op: "create", itemId: item._id, title: item.title, before: null, after: external })];
+  await col.insertOne(item);
+  return external;
 }
 
-function deleteItem(id) {
-  const data = load();
-  const idx = data.items.findIndex((it) => it.id === id);
-  if (idx === -1) return false;
-  const [deleted] = data.items.splice(idx, 1);
-  saveAtomic(data);
-  historyStore.append({ op: "delete", itemId: id, title: deleted.title, before: deleted, after: null });
+async function updateItem(id, input) {
+  validateItemInput(input);
+  const col = await events();
+  const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+  if (!existing) return null;
+
+  const before = toExternalItem(existing);
+  const after = { ...before, ...fieldsFromInput(input), id };
+  const entry = makeHistoryEntry({ op: "update", itemId: id, title: after.title, before, after });
+
+  await col.updateOne(
+    { _id: id },
+    { $set: { ...fieldsFromInput(after), updatedAt: new Date().toISOString() }, $push: { history: entry } }
+  );
+  return after;
+}
+
+async function deleteItem(id) {
+  const col = await events();
+  const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+  if (!existing) return false;
+
+  const before = toExternalItem(existing);
+  const entry = makeHistoryEntry({ op: "delete", itemId: id, title: before.title, before, after: null });
+
+  await col.updateOne(
+    { _id: id },
+    { $set: { status: "deleted", updatedAt: new Date().toISOString() }, $push: { history: entry } }
+  );
   return true;
 }
 
-function importItems(inputItems) {
+async function importItems(inputItems) {
   if (!Array.isArray(inputItems)) {
     throw new Error("items must be an array");
   }
@@ -146,72 +173,55 @@ function importItems(inputItems) {
     throw err;
   }
 
-  const data = load();
-  const historyEntries = [];
   const result = { created: 0, updated: 0 };
 
+  // Validation already ran up-front (pure, no DB access) so a bad item
+  // never gets here; what's left is a sequence of single-document writes,
+  // each atomic on its own but not as one all-or-nothing transaction across
+  // documents the way the old single-file write was. Acceptable for this
+  // app's scale/demo-data status - flagged here rather than silently assumed.
   for (const input of inputItems) {
-    const existingIdx = input.id ? data.items.findIndex((it) => it.id === input.id) : -1;
-    if (existingIdx !== -1) {
-      const before = data.items[existingIdx];
-      const updated = {
-        ...before,
-        type: input.type,
-        m: input.m,
-        y: input.y,
-        title: input.title,
-        short: input.short,
-        full: input.full,
-        detail: input.detail || {},
-        "required-white-shirt": Boolean(input["required-white-shirt"]),
-        "required-food": Boolean(input["required-food"]),
-      };
-      data.items[existingIdx] = updated;
-      historyEntries.push({ op: "update", itemId: updated.id, title: updated.title, before, after: updated });
-      result.updated += 1;
-    } else {
-      const item = {
-        id: crypto.randomUUID(),
-        type: input.type,
-        m: input.m,
-        y: input.y,
-        title: input.title,
-        short: input.short,
-        full: input.full,
-        detail: input.detail || {},
-        "required-white-shirt": Boolean(input["required-white-shirt"]),
-        "required-food": Boolean(input["required-food"]),
-      };
-      data.items.push(item);
-      historyEntries.push({ op: "create", itemId: item.id, title: item.title, before: null, after: item });
-      result.created += 1;
+    if (input.id) {
+      const updated = await updateItem(input.id, input);
+      if (updated) {
+        result.updated += 1;
+        continue;
+      }
     }
+    await addItem(input);
+    result.created += 1;
   }
 
-  saveAtomic(data);
-  historyEntries.forEach((entry) => historyStore.append(entry));
   return result;
 }
 
-function restoreFromHistory(eventId) {
-  const entry = historyStore.get(eventId);
+async function restoreFromHistory(eventId) {
+  const col = await events();
+  const doc = await col.findOne({ ...activeDatasetFilter(), "history.id": eventId });
+  if (!doc) return null;
+
+  const entry = doc.history.find((h) => h.id === eventId);
   if (!entry) return null;
   const snapshot = entry.op === "delete" ? entry.before : entry.after;
   if (!snapshot) return null;
-  const data = load();
-  const idx = data.items.findIndex((it) => it.id === snapshot.id);
-  const previousState = idx === -1 ? null : data.items[idx];
-  const restored = { ...snapshot };
-  if (idx === -1) data.items.push(restored);
-  else data.items[idx] = restored;
-  saveAtomic(data);
-  historyStore.append({
+
+  const previousState = doc.status === "active" ? toExternalItem(doc) : null;
+  const restored = { ...snapshot, id: doc._id };
+  const restoreEntry = makeHistoryEntry({
     op: "restore",
     itemId: restored.id,
     title: restored.title,
     before: previousState,
     after: restored,
   });
+
+  await col.updateOne(
+    { _id: doc._id },
+    {
+      $set: { ...fieldsFromInput(restored), status: "active", updatedAt: new Date().toISOString() },
+      $push: { history: restoreEntry },
+    }
+  );
   return restored;
 }
 
