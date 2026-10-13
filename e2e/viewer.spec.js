@@ -5,4 +5,5 @@ test("viewer loads with the masthead, legend, and jump button", async ({ page })
   await expect(page.getByRole("heading", { name: "ציר שנת הלימודים" })).toBeVisible();
   await expect(page.locator(".legend").getByText("חג / חופשה")).toBeVisible();
   await expect(page.getByRole("button", { name: "קפיצה לחודש הנוכחי" })).toBeVisible();
+  await expect(page.locator(".app-version")).toContainText(/גרסה \d+\.\d+\.\d+/);
 });

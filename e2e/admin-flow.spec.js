@@ -10,6 +10,7 @@ test("wrong password shows an error and does not log in", async ({ page }) => {
 test("logging in, adding an item, and seeing it on the public timeline", async ({ page }) => {
   await login(page);
   await expect(page.getByRole("heading", { name: "ניהול ציר שנת הלימודים" })).toBeVisible();
+  await expect(page.locator(".admin-card .app-version").first()).toContainText(/v\d+\.\d+\.\d+/);
 
   await addItemViaAdmin(page, { title: "בדיקת E2E", short: "5.5", full: "5.5.2027", m: "5", y: "2027" });
   await expect(page.getByText("בדיקת E2E")).toBeVisible(); // shows in the admin item list

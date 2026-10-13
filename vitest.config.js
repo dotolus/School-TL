@@ -4,6 +4,9 @@ const react = require("@vitejs/plugin-react");
 
 module.exports = defineConfig({
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(require("./package.json").version),
+  },
   resolve: {
     // Component source files under client/src live next to client/node_modules,
     // which Node's resolution algorithm would otherwise prefer over the root
@@ -21,6 +24,7 @@ module.exports = defineConfig({
     include: [
       "server/**/__tests__/**/*.test.js",
       "client/src/**/__tests__/**/*.test.{js,jsx}",
+      "scripts/**/__tests__/**/*.test.js",
     ],
     exclude: ["node_modules", "client/node_modules", "e2e"],
   },
