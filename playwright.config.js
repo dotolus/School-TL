@@ -11,11 +11,10 @@ const PORT = 4567;
 // has no "create" API - only switching between existing themes - so an
 // e2e run against a truly empty DATA_DIR could never show a theme to
 // switch to). Mirror that real starting state instead of an artificial
-// blank slate.
+// blank slate. Events now live in Mongo instead of DATA_DIR - see
+// e2e/start-server.js, which seeds an in-memory Mongo from timeline.json.
 const SEED_DIR = path.join(__dirname, "server", "data");
-for (const file of ["themes.json", "timeline.json"]) {
-  fs.copyFileSync(path.join(SEED_DIR, file), path.join(DATA_DIR, file));
-}
+fs.copyFileSync(path.join(SEED_DIR, "themes.json"), path.join(DATA_DIR, "themes.json"));
 
 module.exports = defineConfig({
   testDir: "./e2e",
@@ -27,7 +26,7 @@ module.exports = defineConfig({
     baseURL: `http://localhost:${PORT}`,
   },
   webServer: {
-    command: "node server/index.js",
+    command: "node e2e/start-server.js",
     port: PORT,
     reuseExistingServer: false,
     timeout: 30_000,
@@ -36,6 +35,13 @@ module.exports = defineConfig({
       DATA_DIR,
       ADMIN_PASSWORD: "e2e-test-password",
       SESSION_SECRET: "e2e-test-secret",
+      // Force the self-contained in-memory Mongo (e2e/start-server.js) and
+      // imageStore.js's data-URI fallback, even if the shell running this
+      // happens to have real credentials exported.
+      MONGODB_URI: "",
+      CLOUDINARY_CLOUD_NAME: "",
+      CLOUDINARY_API_KEY: "",
+      CLOUDINARY_API_SECRET: "",
     },
   },
 });

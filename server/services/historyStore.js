@@ -1,42 +1,43 @@
-const fs = require("fs");
-const crypto = require("crypto");
-const { HISTORY_FILE, DATA_DIR } = require("../config");
+// History entries now live embedded in their owning event document
+// (server/services/timelineStore.js appends them there) rather than in a
+// standalone log file. This module is read-only: it queries across those
+// embedded arrays instead of storing anything itself.
+const { getDb } = require("./db");
+const { ACTIVE_SCHOOL, ACTIVE_CLASS, ACTIVE_PERIOD } = require("../config");
 
-function ensureDataDir() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+function activeDatasetFilter() {
+  return { school: ACTIVE_SCHOOL, class: ACTIVE_CLASS, period: ACTIVE_PERIOD };
 }
 
-function readAll() {
-  ensureDataDir();
-  if (!fs.existsSync(HISTORY_FILE)) return [];
-  const raw = fs.readFileSync(HISTORY_FILE, "utf8");
-  return raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
+async function events() {
+  const db = await getDb();
+  return db.collection("events");
 }
 
-function append(entry) {
-  ensureDataDir();
-  const full = {
-    id: crypto.randomUUID(),
-    ts: new Date().toISOString(),
-    ...entry,
-  };
-  fs.appendFileSync(HISTORY_FILE, JSON.stringify(full) + "\n", "utf8");
-  return full;
+async function list({ itemId, limit } = {}) {
+  const col = await events();
+  const match = { ...activeDatasetFilter() };
+  if (itemId) match._id = itemId;
+
+  const pipeline = [
+    { $match: match },
+    { $unwind: "$history" },
+    { $replaceRoot: { newRoot: "$history" } },
+    { $sort: { ts: -1 } },
+  ];
+  if (limit) pipeline.push({ $limit: Number(limit) });
+
+  return col.aggregate(pipeline).toArray();
 }
 
-function list({ itemId, limit } = {}) {
-  let events = readAll().reverse();
-  if (itemId) events = events.filter((e) => e.itemId === itemId);
-  if (limit) events = events.slice(0, limit);
-  return events;
+async function get(eventId) {
+  const col = await events();
+  const doc = await col.findOne(
+    { ...activeDatasetFilter(), "history.id": eventId },
+    { projection: { history: 1 } }
+  );
+  if (!doc) return null;
+  return doc.history.find((h) => h.id === eventId) || null;
 }
 
-function get(eventId) {
-  return readAll().find((e) => e.id === eventId) || null;
-}
-
-module.exports = { append, list, get };
+module.exports = { list, get };

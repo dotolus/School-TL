@@ -1,7 +1,7 @@
 {
   "name": "eq-ppt",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.0",
   "scripts": {
     "dev:server": "nodemon server/index.js",
     "dev:client": "npm run dev --prefix client",
@@ -13,14 +13,17 @@
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
     "lint": "eslint .",
+    "migrate:mongo": "node scripts/migrate-to-mongo.js",
     "release:major": "node scripts/bump-version.js major",
     "release:minor": "node scripts/bump-version.js minor",
     "release:patch": "node scripts/bump-version.js patch"
   },
   "dependencies": {
+    "cloudinary": "^2.11.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-session": "^1.18.1",
+    "mongodb": "^7.7.0",
     "multer": "^2.4.0",
     "node-cron": "^3.0.3"
   },
@@ -36,6 +39,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
     "jsdom": "^29.1.1",
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
