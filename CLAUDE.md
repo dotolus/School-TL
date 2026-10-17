@@ -53,6 +53,8 @@ A **Claude Code hook** (`.claude/settings.json`, `PreToolUse`/`Bash`, filtered v
 
 `scripts/bump-version.js` is also exposed for deliberate manual releases via `npm run release:major` / `release:minor` / `release:patch` — these skip the commit-message detection and just apply the given bump type directly to both `package.json` files (uncommitted; you review and commit yourself). Don't run one of these *and* rely on the next merge's auto-bump for the same change — they're not coordinated, so you'd double-bump.
 
+**Claude Code rule:** before creating a pull request to `main`, ask which kind of version bump to apply — major, minor, patch, or "leave as is" (for when the version on the branch has already been bumped manually for this change). If a bump is chosen, run the matching `npm run release:*` script and commit the result on the branch first, and only then open the PR. "Leave as is" skips straight to opening the PR.
+
 The client embeds the root `package.json` version at build time as the `__APP_VERSION__` global — set via `define` in both `client/vite.config.js` and the root `vitest.config.js` (so component tests see the same global without a real build), and declared for ESLint in `eslint.config.js`'s client globals block. `client/src/version.js` re-exports it as `APP_VERSION`; `Footer.jsx` (viewer) and `AdminPage.jsx` display it. There's no server-side `/api/version` — the version is a client build-time constant, not something fetched at runtime.
 
 ## Architecture

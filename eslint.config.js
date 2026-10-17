@@ -34,7 +34,7 @@ module.exports = [
 
   // Server: plain Node CommonJS.
   {
-    files: ["server/**/*.js", "scripts/**/*.js", "*.config.js", ".claude/hooks/**/*.js"],
+    files: ["server/**/*.js", "scripts/**/*.js", "*.config.js", ".claude/hooks/**/*.js", "api/**/*.js"],
     languageOptions: {
       sourceType: "commonjs",
       ecmaVersion: 2022,
