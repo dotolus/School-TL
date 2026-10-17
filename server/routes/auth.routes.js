@@ -6,6 +6,7 @@ const router = express.Router();
 router.post("/login", (req, res) => {
   const { password } = req.body || {};
   if (password !== ADMIN_PASSWORD) {
+    console.warn("[auth] Failed login attempt: wrong password");
     return res.status(401).json({ error: "Wrong password" });
   }
   req.session.isAdmin = true;

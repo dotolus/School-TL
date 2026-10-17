@@ -28,7 +28,10 @@ const upload = multer({
 
 function uploadSingleImage(req, res, next) {
   upload.single("image")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
+    if (err) {
+      console.warn("[timeline] Image upload rejected:", err.message);
+      return res.status(400).json({ error: err.message });
+    }
     next();
   });
 }
@@ -46,7 +49,10 @@ const importUpload = multer({
 
 function uploadImportFile(req, res, next) {
   importUpload.single("file")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
+    if (err) {
+      console.warn("[timeline] Import file rejected:", err.message);
+      return res.status(400).json({ error: err.message });
+    }
     next();
   });
 }
@@ -69,11 +75,13 @@ router.post(
     try {
       parsed = JSON.parse(req.file.buffer.toString("utf8"));
     } catch {
+      console.warn("[timeline] Import failed: file is not valid JSON");
       return res.status(400).json({ error: "File is not valid JSON" });
     }
 
     const items = Array.isArray(parsed) ? parsed : parsed.items;
     if (!Array.isArray(items)) {
+      console.warn("[timeline] Import failed: no items array found in file");
       return res.status(400).json({ error: "File must contain an 'items' array (matching GET /api/timeline)" });
     }
 
@@ -154,7 +162,10 @@ router.post(
   uploadSingleImage,
   asyncHandler(async (req, res) => {
     const item = await store.getItem(req.params.id);
-    if (!req.file) return res.status(400).json({ error: "No image file provided" });
+    if (!req.file) {
+      console.warn(`[timeline] Image upload failed: no file provided for item ${req.params.id}`);
+      return res.status(400).json({ error: "No image file provided" });
+    }
 
     const { url, publicId } = await imageStore.uploadImage(req.file.buffer, req.file.mimetype, `eq-ppt/${item.id}`);
     const image = { id: crypto.randomUUID(), url, publicId };
@@ -169,7 +180,10 @@ router.delete(
   requireAuth,
   asyncHandler(async (req, res) => {
     const item = await store.getItem(req.params.id);
-    if (!item) return res.status(404).json({ error: "Item not found" });
+    if (!item) {
+      console.warn(`[timeline] Image delete failed: item ${req.params.id} not found`);
+      return res.status(404).json({ error: "Item not found" });
+    }
 
     const images = (item.detail?.images || []).filter((img) => img.id !== req.params.imageId);
     const updated = await store.updateItem(item.id, withImages(item, images));

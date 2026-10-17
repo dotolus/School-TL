@@ -38,7 +38,7 @@ if (fs.existsSync(CLIENT_DIST)) {
 // anything that reaches here is an unexpected failure, not a validation error.
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error(`[app] Unhandled error on ${req.method} ${req.originalUrl}:`, err);
   res.status(500).json({ error: err.message });
 });
 

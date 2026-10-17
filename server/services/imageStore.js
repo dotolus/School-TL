@@ -28,7 +28,10 @@ function uploadImage(buffer, mimetype, folder) {
   const cloudinary = require("cloudinary").v2;
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({ folder, resource_type: "image" }, (err, result) => {
-      if (err) return reject(err);
+      if (err) {
+        console.error("[imageStore] Cloudinary upload failed:", err.message);
+        return reject(err);
+      }
       resolve({ url: result.secure_url, publicId: result.public_id });
     });
     stream.end(buffer);

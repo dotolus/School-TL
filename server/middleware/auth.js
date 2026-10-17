@@ -6,6 +6,7 @@ function requireAuth(req, res, next) {
   // the client's write completes cleanly instead of the connection
   // aborting mid-upload.
   req.resume();
+  console.warn(`[auth] Unauthorized request: ${req.method} ${req.originalUrl}`);
   return res.status(401).json({ error: "Authentication required" });
 }
 
