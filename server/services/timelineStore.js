@@ -94,65 +94,100 @@ function makeHistoryEntry(partial) {
 }
 
 async function getAll() {
-  const col = await events();
-  const docs = await col.find({ ...activeDatasetFilter(), status: "active" }).toArray();
-  return docs.map(toExternalItem);
+  const { school, class: cls, period } = activeDatasetFilter();
+  try {
+    const col = await events();
+    const docs = await col.find({ ...activeDatasetFilter(), status: "active" }).toArray();
+    return docs.map(toExternalItem);
+  } catch (err) {
+    console.error(`[timelineStore] Failed to fetch items for ${school}/${cls}/${period}:`, err.message);
+    throw err;
+  }
 }
 
 async function getItem(id) {
-  const col = await events();
-  const doc = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-  return toExternalItem(doc);
+  try {
+    const col = await events();
+    const doc = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+    return toExternalItem(doc);
+  } catch (err) {
+    console.error(`[timelineStore] Failed to fetch item ${id}:`, err.message);
+    throw err;
+  }
 }
 
 async function addItem(input) {
-  validateItemInput(input);
-  const col = await events();
-  const now = new Date().toISOString();
-  const item = {
-    _id: crypto.randomUUID(),
-    ...activeDatasetFilter(),
-    status: "active",
-    ...fieldsFromInput(input),
-    createdAt: now,
-    updatedAt: now,
-  };
-  const external = toExternalItem(item);
-  item.history = [makeHistoryEntry({ op: "create", itemId: item._id, title: item.title, before: null, after: external })];
-  await col.insertOne(item);
-  return external;
+  try {
+    validateItemInput(input);
+    const col = await events();
+    const now = new Date().toISOString();
+    const item = {
+      _id: crypto.randomUUID(),
+      ...activeDatasetFilter(),
+      status: "active",
+      ...fieldsFromInput(input),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const external = toExternalItem(item);
+    item.history = [makeHistoryEntry({ op: "create", itemId: item._id, title: item.title, before: null, after: external })];
+    await col.insertOne(item);
+    console.log(`[timelineStore] Created item ${item._id} (${item.title})`);
+    return external;
+  } catch (err) {
+    console.error("[timelineStore] Failed to create item:", err.message);
+    throw err;
+  }
 }
 
 async function updateItem(id, input) {
-  validateItemInput(input);
-  const col = await events();
-  const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-  if (!existing) return null;
+  try {
+    validateItemInput(input);
+    const col = await events();
+    const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+    if (!existing) {
+      console.warn(`[timelineStore] Update failed: item ${id} not found`);
+      return null;
+    }
 
-  const before = toExternalItem(existing);
-  const after = { ...before, ...fieldsFromInput(input), id };
-  const entry = makeHistoryEntry({ op: "update", itemId: id, title: after.title, before, after });
+    const before = toExternalItem(existing);
+    const after = { ...before, ...fieldsFromInput(input), id };
+    const entry = makeHistoryEntry({ op: "update", itemId: id, title: after.title, before, after });
 
-  await col.updateOne(
-    { _id: id },
-    { $set: { ...fieldsFromInput(after), updatedAt: new Date().toISOString() }, $push: { history: entry } }
-  );
-  return after;
+    await col.updateOne(
+      { _id: id },
+      { $set: { ...fieldsFromInput(after), updatedAt: new Date().toISOString() }, $push: { history: entry } }
+    );
+    console.log(`[timelineStore] Updated item ${id} (${after.title})`);
+    return after;
+  } catch (err) {
+    console.error(`[timelineStore] Failed to update item ${id}:`, err.message);
+    throw err;
+  }
 }
 
 async function deleteItem(id) {
-  const col = await events();
-  const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-  if (!existing) return false;
+  try {
+    const col = await events();
+    const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
+    if (!existing) {
+      console.warn(`[timelineStore] Delete failed: item ${id} not found`);
+      return false;
+    }
 
-  const before = toExternalItem(existing);
-  const entry = makeHistoryEntry({ op: "delete", itemId: id, title: before.title, before, after: null });
+    const before = toExternalItem(existing);
+    const entry = makeHistoryEntry({ op: "delete", itemId: id, title: before.title, before, after: null });
 
-  await col.updateOne(
-    { _id: id },
-    { $set: { status: "deleted", updatedAt: new Date().toISOString() }, $push: { history: entry } }
-  );
-  return true;
+    await col.updateOne(
+      { _id: id },
+      { $set: { status: "deleted", updatedAt: new Date().toISOString() }, $push: { history: entry } }
+    );
+    console.log(`[timelineStore] Deleted item ${id} (${before.title})`);
+    return true;
+  } catch (err) {
+    console.error(`[timelineStore] Failed to delete item ${id}:`, err.message);
+    throw err;
+  }
 }
 
 async function importItems(inputItems) {
@@ -168,6 +203,7 @@ async function importItems(inputItems) {
     }
   });
   if (errors.length) {
+    console.error(`[timelineStore] Import validation failed for ${errors.length} item(s)`);
     const err = new Error("Import validation failed");
     err.details = errors;
     throw err;
@@ -192,37 +228,53 @@ async function importItems(inputItems) {
     result.created += 1;
   }
 
+  console.log(`[timelineStore] Import complete: ${result.created} created, ${result.updated} updated`);
   return result;
 }
 
 async function restoreFromHistory(eventId) {
-  const col = await events();
-  const doc = await col.findOne({ ...activeDatasetFilter(), "history.id": eventId });
-  if (!doc) return null;
-
-  const entry = doc.history.find((h) => h.id === eventId);
-  if (!entry) return null;
-  const snapshot = entry.op === "delete" ? entry.before : entry.after;
-  if (!snapshot) return null;
-
-  const previousState = doc.status === "active" ? toExternalItem(doc) : null;
-  const restored = { ...snapshot, id: doc._id };
-  const restoreEntry = makeHistoryEntry({
-    op: "restore",
-    itemId: restored.id,
-    title: restored.title,
-    before: previousState,
-    after: restored,
-  });
-
-  await col.updateOne(
-    { _id: doc._id },
-    {
-      $set: { ...fieldsFromInput(restored), status: "active", updatedAt: new Date().toISOString() },
-      $push: { history: restoreEntry },
+  try {
+    const col = await events();
+    const doc = await col.findOne({ ...activeDatasetFilter(), "history.id": eventId });
+    if (!doc) {
+      console.warn(`[timelineStore] Restore failed: no event found for history entry ${eventId}`);
+      return null;
     }
-  );
-  return restored;
+
+    const entry = doc.history.find((h) => h.id === eventId);
+    if (!entry) {
+      console.warn(`[timelineStore] Restore failed: history entry ${eventId} not found`);
+      return null;
+    }
+    const snapshot = entry.op === "delete" ? entry.before : entry.after;
+    if (!snapshot) {
+      console.warn(`[timelineStore] Restore failed: history entry ${eventId} has no snapshot to restore`);
+      return null;
+    }
+
+    const previousState = doc.status === "active" ? toExternalItem(doc) : null;
+    const restored = { ...snapshot, id: doc._id };
+    const restoreEntry = makeHistoryEntry({
+      op: "restore",
+      itemId: restored.id,
+      title: restored.title,
+      before: previousState,
+      after: restored,
+    });
+
+    await col.updateOne(
+      { _id: doc._id },
+      {
+        $set: { ...fieldsFromInput(restored), status: "active", updatedAt: new Date().toISOString() },
+        $push: { history: restoreEntry },
+      }
+    );
+    console.log(`[timelineStore] Restored item ${restored.id} from history entry ${eventId}`);
+    return restored;
+  } catch (err) {
+    console.error(`[timelineStore] Failed to restore from history entry ${eventId}:`, err.message);
+    throw err;
+  }
 }
 
 module.exports = {
