@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
     "lint": "eslint .",
-    "migrate:mongo": "node scripts/migrate-to-mongo.js",
+    "migrate:firestore": "node scripts/migrate-to-firestore.js",
+    "emulator:firestore": "firebase emulators:start --only firestore --project demo-eq-ppt-dev",
     "release:major": "node scripts/bump-version.js major",
     "release:minor": "node scripts/bump-version.js minor",
     "release:patch": "node scripts/bump-version.js patch"
@@ -23,6 +24,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-session": "^1.18.1",
+    "firebase-admin": "^14.5.0",
     "mongodb": "^7.7.0",
     "multer": "^2.4.0",
     "node-cron": "^3.0.3"
@@ -37,9 +39,9 @@
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "firebase-tools": "^15.34.0",
     "globals": "^17.13.0",
     "jsdom": "^29.1.1",
-    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

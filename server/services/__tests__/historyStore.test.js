@@ -1,6 +1,6 @@
 const path = require("path");
 const crypto = require("crypto");
-const { MongoMemoryServer } = require("mongodb-memory-server");
+const { applyEmulatorEnv } = require("../../__tests__/firestoreTestEnv");
 
 const SERVER_DIR = path.join(__dirname, "..", "..");
 
@@ -10,30 +10,21 @@ function clearServerModuleCache() {
   }
 }
 
-let mongod;
 let store;
 let historyStore;
 
-beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
-});
-
-afterAll(async () => {
-  await mongod.stop();
-});
-
 beforeEach(() => {
-  process.env.MONGODB_URI = mongod.getUri();
-  process.env.MONGODB_DB_NAME = `eq_ppt_test_${crypto.randomUUID()}`;
+  applyEmulatorEnv();
+  process.env.ACTIVE_SCHOOL = `test-${crypto.randomUUID()}`;
   clearServerModuleCache();
   store = require("../timelineStore");
   historyStore = require("../historyStore");
 });
 
 afterEach(() => {
-  delete process.env.MONGODB_URI;
-  delete process.env.MONGODB_DB_NAME;
   delete process.env.ACTIVE_SCHOOL;
+  delete process.env.FIRESTORE_EMULATOR_HOST;
+  delete process.env.FIREBASE_PROJECT_ID;
 });
 
 const validItem = (overrides = {}) => ({

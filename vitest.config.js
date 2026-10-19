@@ -21,6 +21,7 @@ module.exports = defineConfig({
   test: {
     environment: "node",
     globals: true,
+    globalSetup: ["./server/__tests__/firestoreEmulatorGlobalSetup.js"],
     include: [
       "server/**/__tests__/**/*.test.js",
       "client/src/**/__tests__/**/*.test.{js,jsx}",
