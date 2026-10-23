@@ -1,7 +1,7 @@
 {
   "name": "eq-ppt",
   "private": true,
-  "version": "1.1.5",
+  "version": "1.1.6",
   "scripts": {
     "dev:server": "nodemon server/index.js",
     "dev:client": "npm run dev --prefix client",
