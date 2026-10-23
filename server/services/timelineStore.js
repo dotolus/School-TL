@@ -1,16 +1,11 @@
 const crypto = require("crypto");
-const { getDb } = require("./db");
+const { getRepository } = require("./persistence");
 const { ACTIVE_SCHOOL, ACTIVE_CLASS, ACTIVE_PERIOD } = require("../config");
 
 const VALID_TYPES = new Set(["holiday", "test", "notice", "project"]);
 
 function activeDatasetFilter() {
   return { school: ACTIVE_SCHOOL, class: ACTIVE_CLASS, period: ACTIVE_PERIOD };
-}
-
-async function events() {
-  const db = await getDb();
-  return db.collection("events");
 }
 
 function validateItemInput(input) {
@@ -56,22 +51,22 @@ function validateItemInput(input) {
   }
 }
 
-// Strips the internal-only fields (school/class/period/status/history/_id
-// timestamps) so every API response keeps the exact same item shape the
-// file-based store used to return.
-function toExternalItem(doc) {
-  if (!doc) return null;
+// Strips the internal-only fields (school/class/period/status/timestamps)
+// so every API response keeps the exact same item shape the file-based
+// store used to return.
+function toExternalItem(record) {
+  if (!record) return null;
   return {
-    id: doc._id,
-    type: doc.type,
-    m: doc.m,
-    y: doc.y,
-    title: doc.title,
-    short: doc.short,
-    full: doc.full,
-    detail: doc.detail || {},
-    "required-white-shirt": Boolean(doc["required-white-shirt"]),
-    "required-food": Boolean(doc["required-food"]),
+    id: record.id,
+    type: record.type,
+    m: record.m,
+    y: record.y,
+    title: record.title,
+    short: record.short,
+    full: record.full,
+    detail: record.detail || {},
+    "required-white-shirt": Boolean(record["required-white-shirt"]),
+    "required-food": Boolean(record["required-food"]),
   };
 }
 
@@ -96,9 +91,8 @@ function makeHistoryEntry(partial) {
 async function getAll() {
   const { school, class: cls, period } = activeDatasetFilter();
   try {
-    const col = await events();
-    const docs = await col.find({ ...activeDatasetFilter(), status: "active" }).toArray();
-    return docs.map(toExternalItem);
+    const records = await getRepository().getActiveEvents(activeDatasetFilter());
+    return records.map(toExternalItem);
   } catch (err) {
     console.error(`[timelineStore] Failed to fetch items for ${school}/${cls}/${period}:`, err.message);
     throw err;
@@ -107,9 +101,8 @@ async function getAll() {
 
 async function getItem(id) {
   try {
-    const col = await events();
-    const doc = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-    return toExternalItem(doc);
+    const record = await getRepository().getEvent(id, activeDatasetFilter());
+    return toExternalItem(record);
   } catch (err) {
     console.error(`[timelineStore] Failed to fetch item ${id}:`, err.message);
     throw err;
@@ -119,20 +112,21 @@ async function getItem(id) {
 async function addItem(input) {
   try {
     validateItemInput(input);
-    const col = await events();
+    const tag = activeDatasetFilter();
     const now = new Date().toISOString();
-    const item = {
-      _id: crypto.randomUUID(),
-      ...activeDatasetFilter(),
+    const id = crypto.randomUUID();
+    const record = {
+      id,
+      ...tag,
       status: "active",
       ...fieldsFromInput(input),
       createdAt: now,
       updatedAt: now,
     };
-    const external = toExternalItem(item);
-    item.history = [makeHistoryEntry({ op: "create", itemId: item._id, title: item.title, before: null, after: external })];
-    await col.insertOne(item);
-    console.log(`[timelineStore] Created item ${item._id} (${item.title})`);
+    const external = toExternalItem(record);
+    const entry = makeHistoryEntry({ op: "create", itemId: id, title: record.title, before: null, after: external });
+    await getRepository().createEvent(record, entry, tag);
+    console.log(`[timelineStore] Created item ${id} (${record.title})`);
     return external;
   } catch (err) {
     console.error("[timelineStore] Failed to create item:", err.message);
@@ -143,21 +137,18 @@ async function addItem(input) {
 async function updateItem(id, input) {
   try {
     validateItemInput(input);
-    const col = await events();
-    const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-    if (!existing) {
+    const tag = activeDatasetFilter();
+    let after = null;
+    const ok = await getRepository().updateActiveEvent(id, tag, (existing) => {
+      const before = toExternalItem(existing);
+      after = { ...before, ...fieldsFromInput(input), id };
+      const entry = makeHistoryEntry({ op: "update", itemId: id, title: after.title, before, after });
+      return { fields: { ...fieldsFromInput(after), updatedAt: new Date().toISOString() }, historyEntry: entry };
+    });
+    if (!ok) {
       console.warn(`[timelineStore] Update failed: item ${id} not found`);
       return null;
     }
-
-    const before = toExternalItem(existing);
-    const after = { ...before, ...fieldsFromInput(input), id };
-    const entry = makeHistoryEntry({ op: "update", itemId: id, title: after.title, before, after });
-
-    await col.updateOne(
-      { _id: id },
-      { $set: { ...fieldsFromInput(after), updatedAt: new Date().toISOString() }, $push: { history: entry } }
-    );
     console.log(`[timelineStore] Updated item ${id} (${after.title})`);
     return after;
   } catch (err) {
@@ -168,20 +159,17 @@ async function updateItem(id, input) {
 
 async function deleteItem(id) {
   try {
-    const col = await events();
-    const existing = await col.findOne({ ...activeDatasetFilter(), status: "active", _id: id });
-    if (!existing) {
+    const tag = activeDatasetFilter();
+    let before = null;
+    const ok = await getRepository().updateActiveEvent(id, tag, (existing) => {
+      before = toExternalItem(existing);
+      const entry = makeHistoryEntry({ op: "delete", itemId: id, title: before.title, before, after: null });
+      return { fields: { status: "deleted", updatedAt: new Date().toISOString() }, historyEntry: entry };
+    });
+    if (!ok) {
       console.warn(`[timelineStore] Delete failed: item ${id} not found`);
       return false;
     }
-
-    const before = toExternalItem(existing);
-    const entry = makeHistoryEntry({ op: "delete", itemId: id, title: before.title, before, after: null });
-
-    await col.updateOne(
-      { _id: id },
-      { $set: { status: "deleted", updatedAt: new Date().toISOString() }, $push: { history: entry } }
-    );
     console.log(`[timelineStore] Deleted item ${id} (${before.title})`);
     return true;
   } catch (err) {
@@ -234,41 +222,35 @@ async function importItems(inputItems) {
 
 async function restoreFromHistory(eventId) {
   try {
-    const col = await events();
-    const doc = await col.findOne({ ...activeDatasetFilter(), "history.id": eventId });
-    if (!doc) {
-      console.warn(`[timelineStore] Restore failed: no event found for history entry ${eventId}`);
-      return null;
-    }
+    const tag = activeDatasetFilter();
+    let restored = null;
+    const ok = await getRepository().restoreEvent(eventId, tag, (entry, eventRecord) => {
+      // Structurally unreachable via any real app code path (events are
+      // never hard-deleted), but the flat history collection no longer
+      // guarantees a history entry's itemId still resolves the way Mongo's
+      // embedded array did - guard it defensively.
+      if (!eventRecord) return null;
+      const snapshot = entry.op === "delete" ? entry.before : entry.after;
+      if (!snapshot) return null;
 
-    const entry = doc.history.find((h) => h.id === eventId);
-    if (!entry) {
-      console.warn(`[timelineStore] Restore failed: history entry ${eventId} not found`);
-      return null;
-    }
-    const snapshot = entry.op === "delete" ? entry.before : entry.after;
-    if (!snapshot) {
-      console.warn(`[timelineStore] Restore failed: history entry ${eventId} has no snapshot to restore`);
-      return null;
-    }
-
-    const previousState = doc.status === "active" ? toExternalItem(doc) : null;
-    const restored = { ...snapshot, id: doc._id };
-    const restoreEntry = makeHistoryEntry({
-      op: "restore",
-      itemId: restored.id,
-      title: restored.title,
-      before: previousState,
-      after: restored,
+      const previousState = eventRecord.status === "active" ? toExternalItem(eventRecord) : null;
+      restored = { ...snapshot, id: eventRecord.id };
+      const restoreEntry = makeHistoryEntry({
+        op: "restore",
+        itemId: restored.id,
+        title: restored.title,
+        before: previousState,
+        after: restored,
+      });
+      return {
+        fields: { ...fieldsFromInput(restored), status: "active", updatedAt: new Date().toISOString() },
+        historyEntry: restoreEntry,
+      };
     });
-
-    await col.updateOne(
-      { _id: doc._id },
-      {
-        $set: { ...fieldsFromInput(restored), status: "active", updatedAt: new Date().toISOString() },
-        $push: { history: restoreEntry },
-      }
-    );
+    if (!ok) {
+      console.warn(`[timelineStore] Restore failed: history entry ${eventId} not found or has no snapshot`);
+      return null;
+    }
     console.log(`[timelineStore] Restored item ${restored.id} from history entry ${eventId}`);
     return restored;
   } catch (err) {
