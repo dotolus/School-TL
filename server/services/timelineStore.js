@@ -67,6 +67,12 @@ function toExternalItem(record) {
     detail: record.detail || {},
     "required-white-shirt": Boolean(record["required-white-shirt"]),
     "required-food": Boolean(record["required-food"]),
+    // Non-empty only for an item that went through restoreAllFromBackup and
+    // had one or more fields it couldn't recover as-is (see below) - lists
+    // which field names were defaulted. A normal add/update always resets
+    // this to [] (input never carries it), so re-saving an item through the
+    // admin UI is how an admin marks it "fixed".
+    recoveryIssues: Array.isArray(record.recoveryIssues) ? record.recoveryIssues : [],
   };
 }
 
@@ -81,6 +87,7 @@ function fieldsFromInput(input) {
     detail: input.detail || {},
     "required-white-shirt": Boolean(input["required-white-shirt"]),
     "required-food": Boolean(input["required-food"]),
+    recoveryIssues: Array.isArray(input.recoveryIssues) ? input.recoveryIssues : [],
   };
 }
 
@@ -259,6 +266,139 @@ async function restoreFromHistory(eventId) {
   }
 }
 
+// Best-effort per-field sanitizer used by restoreAllFromBackup (never
+// throws): a backup item written months ago by an earlier version of this
+// app, or corrupted in transit, may be missing fields or have the wrong
+// shape entirely. Unlike validateItemInput (which rejects the whole item),
+// this defaults each bad field independently and records its name in
+// recoveryIssues, so the item still comes back - just flagged - instead of
+// the whole restore failing or silently dropping it.
+function sanitizeBackupItem(raw) {
+  const issues = [];
+  const safe = raw && typeof raw === "object" ? raw : {};
+  if (!raw || typeof raw !== "object") issues.push("item");
+
+  const id = typeof safe.id === "string" && safe.id ? safe.id : crypto.randomUUID();
+
+  let type = safe.type;
+  if (!VALID_TYPES.has(type)) {
+    type = "notice";
+    issues.push("type");
+  }
+
+  let m = safe.m;
+  if (!Number.isInteger(m) || m < 1 || m > 12) {
+    m = 1;
+    issues.push("m");
+  }
+
+  let y = safe.y;
+  if (!Number.isInteger(y)) {
+    y = new Date().getFullYear();
+    issues.push("y");
+  }
+
+  const strings = {};
+  for (const field of ["title", "short", "full"]) {
+    const value = safe[field];
+    if (typeof value === "string" && value) {
+      strings[field] = value;
+    } else {
+      strings[field] = "";
+      issues.push(field);
+    }
+  }
+
+  const rawDetail = safe.detail;
+  if (rawDetail !== undefined && (typeof rawDetail !== "object" || rawDetail === null)) {
+    issues.push("detail");
+  }
+  const detailSource = rawDetail && typeof rawDetail === "object" ? rawDetail : {};
+  const detail = {
+    words: Array.isArray(detailSource.words) ? detailSource.words : [],
+    links: Array.isArray(detailSource.links) ? detailSource.links : [],
+    images: Array.isArray(detailSource.images) ? detailSource.images : [],
+  };
+  if (detailSource.pages !== undefined) detail.pages = detailSource.pages;
+
+  return {
+    id,
+    type,
+    m,
+    y,
+    ...strings,
+    detail,
+    "required-white-shirt": Boolean(safe["required-white-shirt"]),
+    "required-food": Boolean(safe["required-food"]),
+    recoveryIssues: issues,
+  };
+}
+
+// The one restore path for a whole-dataset backup (server/services/backupStore.js) -
+// deliberately separate from importItems: import is strict/all-or-nothing
+// and merges by id, this is best-effort/never-fails and replaces the whole
+// active dataset with the backup's snapshot (so an item that existed when
+// the backup was taken but doesn't anymore is restored, and one created
+// since the backup - absent from it - is soft-deleted, the same as a normal
+// deleteItem so it stays individually undo-able from history).
+async function restoreAllFromBackup(backupItems) {
+  if (!Array.isArray(backupItems)) {
+    throw new Error("backup items must be an array");
+  }
+  const tag = activeDatasetFilter();
+  const now = new Date().toISOString();
+  const restored = [];
+  const skipped = [];
+  const keptIds = new Set();
+
+  for (const raw of backupItems) {
+    const sanitized = sanitizeBackupItem(raw);
+    keptIds.add(sanitized.id);
+    try {
+      const record = {
+        id: sanitized.id,
+        ...tag,
+        status: "active",
+        ...fieldsFromInput(sanitized),
+        createdAt: now,
+        updatedAt: now,
+      };
+      const external = toExternalItem(record);
+      const entry = makeHistoryEntry({
+        op: "restore",
+        itemId: record.id,
+        title: record.title,
+        before: null,
+        after: external,
+      });
+      // createEvent's tx.set() creates-or-fully-overwrites by this exact id,
+      // regardless of the doc's previous status - exactly "replace with the
+      // backup's version" for both a never-existed and a since-deleted item.
+      await getRepository().createEvent(record, entry, tag);
+      restored.push(external);
+    } catch (err) {
+      // A write-level failure (not a data-shape one, already handled above
+      // by sanitizeBackupItem) - this single item is skipped, not the whole
+      // restore.
+      console.error(`[timelineStore] Failed to restore backup item ${sanitized.id}:`, err.message);
+      skipped.push({ id: sanitized.id, title: sanitized.title, error: err.message });
+    }
+  }
+
+  const current = await getRepository().getActiveEvents(tag);
+  for (const existing of current) {
+    if (keptIds.has(existing.id)) continue;
+    await getRepository().updateActiveEvent(existing.id, tag, (record) => {
+      const before = toExternalItem(record);
+      const entry = makeHistoryEntry({ op: "delete", itemId: existing.id, title: before.title, before, after: null });
+      return { fields: { status: "deleted", updatedAt: new Date().toISOString() }, historyEntry: entry };
+    });
+  }
+
+  console.log(`[timelineStore] Restored ${restored.length} item(s) from backup (${skipped.length} skipped)`);
+  return { restored, skipped };
+}
+
 module.exports = {
   getAll,
   getItem,
@@ -268,4 +408,5 @@ module.exports = {
   validateItemInput,
   importItems,
   restoreFromHistory,
+  restoreAllFromBackup,
 };

@@ -51,6 +51,9 @@ function eventsCol() {
 function historyCol() {
   return getDb().collection("history");
 }
+function backupsCol() {
+  return getDb().collection("backups");
+}
 
 function omit(obj, keys) {
   const result = { ...obj };
@@ -168,6 +171,35 @@ async function getHistoryEntry(id, tag) {
   return { id: doc.id, ...omit(data, ["school", "class", "period"]) };
 }
 
+async function createBackup(record, tag) {
+  const { id, ...fields } = record;
+  await backupsCol().doc(id).set({ ...tag, ...fields });
+}
+
+async function listBackups(tag) {
+  const snap = await backupsCol()
+    .where("school", "==", tag.school)
+    .where("class", "==", tag.class)
+    .where("period", "==", tag.period)
+    .get();
+  const entries = snap.docs.map((doc) => {
+    const data = doc.data();
+    return { id: doc.id, createdAt: data.createdAt, itemCount: data.itemCount };
+  });
+  // Sorted in app code rather than via Firestore orderBy, same rationale as
+  // listHistory - avoids needing a composite index.
+  entries.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+  return entries;
+}
+
+async function getBackup(id, tag) {
+  const doc = await backupsCol().doc(id).get();
+  if (!doc.exists) return null;
+  const data = doc.data();
+  if (!matchesTag(data, tag)) return null;
+  return { id: doc.id, ...omit(data, ["school", "class", "period"]) };
+}
+
 module.exports = {
   getActiveEvents,
   getEvent,
@@ -176,6 +208,9 @@ module.exports = {
   restoreEvent,
   listHistory,
   getHistoryEntry,
+  createBackup,
+  listBackups,
+  getBackup,
   // Not part of the persistence contract - exported only for one-off
   // scripts (scripts/migrate-to-firestore.js, scripts/import-to-firestore.js,
   // e2e/start-server.js) that need to seed/export raw Firestore data

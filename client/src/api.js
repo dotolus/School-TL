@@ -66,4 +66,8 @@ export const api = {
     return request(`/history${qs ? `?${qs}` : ""}`);
   },
   restoreHistoryEvent: (eventId) => request(`/history/${eventId}/restore`, { method: "POST" }),
+
+  getBackups: () => request("/backup"),
+  createBackup: () => request("/backup", { method: "POST" }),
+  restoreBackup: (id) => request(`/backup/${id}/restore`, { method: "POST" }),
 };

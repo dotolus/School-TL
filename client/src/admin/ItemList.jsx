@@ -26,7 +26,18 @@ export function ItemList({ items, onUpdate, onDelete, onShowHistory }) {
         ) : (
           <div className="admin-item-row" key={item.id}>
             <div>
-              <div>{item.title}</div>
+              <div>
+                {item.title}{" "}
+                {item.recoveryIssues?.length > 0 && (
+                  <span
+                    className="kind-badge"
+                    style={{ background: "var(--test-bg)", color: "var(--test)" }}
+                    title={`שוחזר עם נתונים חסרים/לא תקינים בשדות: ${item.recoveryIssues.join(", ")}`}
+                  >
+                    שוחזר חלקית
+                  </span>
+                )}
+              </div>
               <div className="meta">
                 {item.short} · {KIND_LABEL[item.type] || item.type}
               </div>

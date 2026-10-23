@@ -47,4 +47,20 @@ module.exports = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+
+  // Full-dataset backups (see server/services/backupStore.js). Cron syntax
+  // has no native "every N weeks" - BACKUP_CRON just controls how often the
+  // backup is *checked for*, while BACKUP_MIN_INTERVAL_DAYS is what actually
+  // enforces the real cadence, by comparing against the last backup's
+  // timestamp. Defaults: check every Sunday, back up at most once every 14
+  // days.
+  BACKUP_CRON: process.env.BACKUP_CRON || "0 6 * * 0",
+  BACKUP_MIN_INTERVAL_DAYS: Number(process.env.BACKUP_MIN_INTERVAL_DAYS) || 14,
+  // Shared secret for GET /api/backup/run (server/routes/backup.routes.js),
+  // the endpoint Vercel Cron Jobs hit on a serverless deployment where
+  // node-cron's own scheduler (server/jobs/scheduler.js) never runs - see
+  // CLAUDE.md's Backups section. Vercel automatically sends
+  // `Authorization: Bearer <CRON_SECRET>` to cron-configured routes when
+  // this is set as a project env var.
+  CRON_SECRET: process.env.CRON_SECRET || null,
 };
