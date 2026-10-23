@@ -69,6 +69,18 @@ describe("validateItemInput", () => {
       store.validateItemInput(validItem({ detail: { images: "nope" } }))
     ).toThrow(/detail.images must be an array/);
   });
+
+  it("rejects detail.generalInfo that isn't a string", () => {
+    expect(() =>
+      store.validateItemInput(validItem({ detail: { generalInfo: 123 } }))
+    ).toThrow(/detail.generalInfo must be a string/);
+  });
+
+  it("rejects a non-boolean required-parent-signature", () => {
+    expect(() =>
+      store.validateItemInput(validItem({ "required-parent-signature": "yes" }))
+    ).toThrow(/required-parent-signature must be a boolean/);
+  });
 });
 
 describe("timelineStore CRUD + history integration", () => {
@@ -83,6 +95,18 @@ describe("timelineStore CRUD + history integration", () => {
     expect(await store.deleteItem(created.id)).toBe(true);
     expect(await store.getAll()).toHaveLength(0);
     expect(await store.deleteItem(created.id)).toBe(false);
+  });
+
+  it("persists detail.generalInfo and required-parent-signature through addItem/getItem", async () => {
+    const created = await store.addItem(
+      validItem({ detail: { generalInfo: "bring a snack" }, "required-parent-signature": true })
+    );
+    expect(created.detail.generalInfo).toBe("bring a snack");
+    expect(created["required-parent-signature"]).toBe(true);
+
+    const fetched = await store.getItem(created.id);
+    expect(fetched.detail.generalInfo).toBe("bring a snack");
+    expect(fetched["required-parent-signature"]).toBe(true);
   });
 
   it("a soft-deleted item disappears from getAll/getItem but its document survives for history", async () => {

@@ -41,6 +41,7 @@ async function main() {
           detail: item.detail || {},
           "required-white-shirt": Boolean(item["required-white-shirt"]),
           "required-food": Boolean(item["required-food"]),
+          "required-parent-signature": Boolean(item["required-parent-signature"]),
           createdAt: now,
           updatedAt: now,
         },

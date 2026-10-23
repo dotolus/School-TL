@@ -142,6 +142,7 @@ function withImages(item, images) {
     detail: { ...item.detail, images },
     "required-white-shirt": item["required-white-shirt"],
     "required-food": item["required-food"],
+    "required-parent-signature": item["required-parent-signature"],
   };
 }
 

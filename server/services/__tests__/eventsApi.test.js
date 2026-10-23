@@ -22,7 +22,8 @@ describe("eventsApi.toPublicEvent", () => {
       fullDate: "Tuesday, 16.3.2027",
       requiresWhiteShirt: false,
       requiresFood: false,
-      detail: { pages: null, words: [], links: [] },
+      requiresParentSignature: false,
+      detail: { pages: null, generalInfo: null, words: [], links: [] },
     });
   });
 
@@ -60,9 +61,25 @@ describe("eventsApi.toPublicEvent", () => {
       detail: {},
       "required-white-shirt": true,
       "required-food": true,
+      "required-parent-signature": true,
     };
     const result = toPublicEvent(item);
     expect(result.requiresWhiteShirt).toBe(true);
     expect(result.requiresFood).toBe(true);
+    expect(result.requiresParentSignature).toBe(true);
+  });
+
+  it("surfaces detail.generalInfo under the public detail shape", () => {
+    const item = {
+      id: "x",
+      type: "notice",
+      title: "t",
+      m: 1,
+      y: 2027,
+      short: "1.1",
+      full: "1.1.2027",
+      detail: { generalInfo: "arrive 15 minutes early" },
+    };
+    expect(toPublicEvent(item).detail.generalInfo).toBe("arrive 15 minutes early");
   });
 });

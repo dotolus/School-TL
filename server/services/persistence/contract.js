@@ -21,6 +21,7 @@
 // @property {object} detail
 // @property {boolean} [required-white-shirt]
 // @property {boolean} [required-food]
+// @property {boolean} [required-parent-signature]
 // @property {string} createdAt
 // @property {string} updatedAt
 //

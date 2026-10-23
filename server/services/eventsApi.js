@@ -13,8 +13,10 @@ function toPublicEvent(item) {
     fullDate: item.full,
     requiresWhiteShirt: Boolean(item["required-white-shirt"]),
     requiresFood: Boolean(item["required-food"]),
+    requiresParentSignature: Boolean(item["required-parent-signature"]),
     detail: {
       pages: item.detail?.pages || null,
+      generalInfo: item.detail?.generalInfo || null,
       words: item.detail?.words || [],
       links: (item.detail?.links || []).map((l) => ({
         label: l.label,
