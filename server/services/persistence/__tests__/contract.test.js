@@ -4,7 +4,7 @@
 // and historyStore.js only ever call these same methods.
 const path = require("path");
 const crypto = require("crypto");
-const { applyEmulatorEnv } = require("../../../__tests__/firestoreTestEnv");
+const { applyEmulatorEnv, waitFor } = require("../../../__tests__/firestoreTestEnv");
 
 const SERVER_DIR = path.join(__dirname, "..", "..", "..");
 
@@ -174,5 +174,56 @@ describe("firestoreAdapter (persistence contract)", () => {
 
     const otherTag = { ...tag, school: `other-${crypto.randomUUID()}` };
     expect(await adapter.getHistoryEntry(entryId, otherTag)).toBeNull();
+  });
+
+  describe("backups", () => {
+    function makeBackup(overrides = {}) {
+      return {
+        id: "2027-01-01",
+        createdAt: "2027-01-01T06:00:00.000Z",
+        itemCount: 1,
+        items: [{ id: "x", title: "A" }],
+        themes: { activeThemeId: "paper" },
+        ...overrides,
+      };
+    }
+
+    it("createBackup + getBackup round-trip", async () => {
+      await adapter.createBackup(makeBackup(), tag);
+
+      const got = await adapter.getBackup("2027-01-01", tag);
+      expect(got).toMatchObject({ id: "2027-01-01", itemCount: 1 });
+      expect(got.items).toEqual([{ id: "x", title: "A" }]);
+    });
+
+    it("createBackup upserts by id - a second write for the same date overwrites the first", async () => {
+      await adapter.createBackup(makeBackup({ itemCount: 1 }), tag);
+      await adapter.createBackup(makeBackup({ itemCount: 2 }), tag);
+
+      expect((await adapter.getBackup("2027-01-01", tag)).itemCount).toBe(2);
+    });
+
+    it("listBackups returns metadata only, newest first", async () => {
+      await adapter.createBackup(makeBackup({ id: "2027-01-01", createdAt: "2027-01-01T00:00:00.000Z" }), tag);
+      await adapter.createBackup(makeBackup({ id: "2027-01-02", createdAt: "2027-01-02T00:00:00.000Z" }), tag);
+
+      // listBackups is a .where() query, which (unlike getBackup's point
+      // read by id) can briefly lag behind these writes under the full
+      // suite's heavy parallel emulator load - see firestoreTestEnv.js's
+      // waitFor.
+      const list = await waitFor(async () => {
+        const result = await adapter.listBackups(tag);
+        return result.length >= 2 ? result : null;
+      });
+      expect(list.map((b) => b.id)).toEqual(["2027-01-02", "2027-01-01"]);
+      expect(list[0].items).toBeUndefined();
+    });
+
+    it("getBackup/listBackups don't leak across datasets", async () => {
+      await adapter.createBackup(makeBackup(), tag);
+      const otherTag = { ...tag, school: `other-${crypto.randomUUID()}` };
+      expect(await adapter.getBackup("2027-01-01", otherTag)).toBeNull();
+      expect(await adapter.listBackups(otherTag)).toEqual([]);
+    });
   });
 });

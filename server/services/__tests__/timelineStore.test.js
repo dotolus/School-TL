@@ -176,3 +176,53 @@ describe("importItems", () => {
     await expect(store.importItems({ not: "an array" })).rejects.toThrow(/items must be an array/);
   });
 });
+
+describe("restoreAllFromBackup", () => {
+  it("recreates items from a backup snapshot and prunes active items missing from it", async () => {
+    const a = await store.addItem(validItem({ title: "A" }));
+    await store.addItem(validItem({ title: "B" })); // absent from the backup below
+
+    const result = await store.restoreAllFromBackup([{ ...a, title: "A restored" }]);
+    expect(result.restored.map((i) => i.title)).toEqual(["A restored"]);
+    expect(result.skipped).toEqual([]);
+
+    const active = await store.getAll();
+    expect(active.map((i) => i.title)).toEqual(["A restored"]);
+  });
+
+  it("restoring an empty backup soft-deletes every currently active item", async () => {
+    await store.addItem(validItem());
+    await store.restoreAllFromBackup([]);
+    expect(await store.getAll()).toEqual([]);
+  });
+
+  it("best-effort: defaults a malformed item's fields instead of failing the whole restore", async () => {
+    const result = await store.restoreAllFromBackup([
+      { id: "broken-1", type: "not-a-type", m: 99, y: "nope", title: "", short: "ok", full: "ok" },
+    ]);
+    expect(result.restored).toHaveLength(1);
+    const [item] = result.restored;
+    expect(item.type).toBe("notice");
+    expect(item.m).toBe(1);
+    expect(typeof item.y).toBe("number");
+    expect(item.title).toBe("");
+    expect([...item.recoveryIssues].sort()).toEqual(["m", "title", "type", "y"]);
+
+    const stored = await store.getItem(item.id);
+    expect(stored.recoveryIssues).toEqual(item.recoveryIssues);
+  });
+
+  it("recoveryIssues is cleared once the item is normally re-saved", async () => {
+    const [restored] = (await store.restoreAllFromBackup([{ id: "broken-2", title: "" }])).restored;
+    expect(restored.recoveryIssues.length).toBeGreaterThan(0);
+
+    const updated = await store.updateItem(restored.id, validItem({ title: "Fixed" }));
+    expect(updated.recoveryIssues).toEqual([]);
+  });
+
+  it("rejects a non-array payload", async () => {
+    await expect(store.restoreAllFromBackup({ not: "an array" })).rejects.toThrow(
+      /backup items must be an array/
+    );
+  });
+});

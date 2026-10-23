@@ -7,6 +7,7 @@ import { ItemList } from "./ItemList";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { HistoryPanel } from "./HistoryPanel";
 import { ImportPanel } from "./ImportPanel";
+import { BackupPanel } from "./BackupPanel";
 import { APP_VERSION } from "../version";
 
 export function AdminPage() {
@@ -90,6 +91,11 @@ export function AdminPage() {
       <div className="admin-card">
         <h2>ייבוא נתונים</h2>
         <ImportPanel onImported={loadItems} />
+      </div>
+
+      <div className="admin-card">
+        <h2>גיבויים</h2>
+        <BackupPanel onRestored={loadItems} />
       </div>
 
       <div className="admin-card">

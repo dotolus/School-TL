@@ -33,6 +33,16 @@
 // @property {object|null} before - external item snapshot, or null
 // @property {object|null} after - external item snapshot, or null
 //
+// @typedef {Object} BackupRecord
+// @property {string} id - the backup's own id, an ISO date ("2026-10-23");
+//   at most one backup per calendar date, so creating a second one on the
+//   same date overwrites the first
+// @property {string} createdAt - ISO timestamp of when the backup was taken
+// @property {number} itemCount
+// @property {Array<object>} items - full external-shaped item snapshot (see
+//   server/services/timelineStore.js's toExternalItem)
+// @property {object} themes - `{ activeThemeId }` at backup time
+//
 // Required methods:
 //
 //   getActiveEvents(tag) -> Promise<EventRecord[]>
@@ -54,6 +64,13 @@
 //     atomically whatever computeChange returns.
 //   listHistory(tag, { itemId, limit }) -> Promise<HistoryEntry[]>  // newest first
 //   getHistoryEntry(id, tag) -> Promise<HistoryEntry|null>
+//   createBackup(record: BackupRecord, tag) -> Promise<void>
+//     Upsert by record.id (an ISO date) - a second backup the same day
+//     overwrites the first.
+//   listBackups(tag) -> Promise<Array<{id, createdAt, itemCount}>>
+//     Metadata only (no items/themes) - newest first.
+//   getBackup(id, tag) -> Promise<BackupRecord|null>
+//     The full record, including items/themes, for restore.
 
 const REQUIRED_METHODS = [
   "getActiveEvents",
@@ -63,6 +80,9 @@ const REQUIRED_METHODS = [
   "restoreEvent",
   "listHistory",
   "getHistoryEntry",
+  "createBackup",
+  "listBackups",
+  "getBackup",
 ];
 
 module.exports = { REQUIRED_METHODS };

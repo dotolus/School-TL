@@ -33,6 +33,7 @@ async function createTestApp() {
   process.env.DATA_DIR = tmpDir;
   process.env.ADMIN_PASSWORD = "test-password";
   process.env.ACTIVE_SCHOOL = `test-${crypto.randomUUID()}`;
+  process.env.CRON_SECRET = "test-cron-secret";
   // dotenv (loaded by config.js) never overwrites an already-set env var, so
   // blanking these out here - rather than leaving them unset - keeps a real
   // .env's Cloudinary credentials from leaking into tests and hitting the
@@ -49,6 +50,7 @@ function cleanupTestApp(tmpDir) {
   delete process.env.DATA_DIR;
   delete process.env.ADMIN_PASSWORD;
   delete process.env.ACTIVE_SCHOOL;
+  delete process.env.CRON_SECRET;
   delete process.env.FIRESTORE_EMULATOR_HOST;
   delete process.env.FIREBASE_PROJECT_ID;
   delete process.env.CLOUDINARY_CLOUD_NAME;
