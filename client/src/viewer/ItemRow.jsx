@@ -1,6 +1,7 @@
 import { ItemDetail } from "./ItemDetail";
 import { WhiteShirtIcon } from "./WhiteShirtIcon";
 import { FoodIcon } from "./FoodIcon";
+import { ParentSignatureIcon } from "./ParentSignatureIcon";
 
 const KIND_LABEL = { holiday: "חג / חופשה", test: "מבחן", notice: "הודעה", project: "עבודה גדולה" };
 
@@ -33,6 +34,7 @@ export function ItemRow({ item }) {
               <span className="kind-badge">{badge}</span>
               {item["required-white-shirt"] && <WhiteShirtIcon />}
               {item["required-food"] && <FoodIcon />}
+              {item["required-parent-signature"] && <ParentSignatureIcon />}
             </div>
             <div className="title">{item.title}</div>
           </div>

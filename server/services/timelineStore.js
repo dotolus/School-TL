@@ -40,6 +40,9 @@ function validateItemInput(input) {
   if (detail.images && !Array.isArray(detail.images)) {
     throw new Error("detail.images must be an array");
   }
+  if (detail.generalInfo !== undefined && typeof detail.generalInfo !== "string") {
+    throw new Error("detail.generalInfo must be a string");
+  }
   if (
     input["required-white-shirt"] !== undefined &&
     typeof input["required-white-shirt"] !== "boolean"
@@ -48,6 +51,12 @@ function validateItemInput(input) {
   }
   if (input["required-food"] !== undefined && typeof input["required-food"] !== "boolean") {
     throw new Error("required-food must be a boolean");
+  }
+  if (
+    input["required-parent-signature"] !== undefined &&
+    typeof input["required-parent-signature"] !== "boolean"
+  ) {
+    throw new Error("required-parent-signature must be a boolean");
   }
 }
 
@@ -67,6 +76,7 @@ function toExternalItem(record) {
     detail: record.detail || {},
     "required-white-shirt": Boolean(record["required-white-shirt"]),
     "required-food": Boolean(record["required-food"]),
+    "required-parent-signature": Boolean(record["required-parent-signature"]),
     // Non-empty only for an item that went through restoreAllFromBackup and
     // had one or more fields it couldn't recover as-is (see below) - lists
     // which field names were defaulted. A normal add/update always resets
@@ -87,6 +97,7 @@ function fieldsFromInput(input) {
     detail: input.detail || {},
     "required-white-shirt": Boolean(input["required-white-shirt"]),
     "required-food": Boolean(input["required-food"]),
+    "required-parent-signature": Boolean(input["required-parent-signature"]),
     recoveryIssues: Array.isArray(input.recoveryIssues) ? input.recoveryIssues : [],
   };
 }
@@ -320,6 +331,7 @@ function sanitizeBackupItem(raw) {
     images: Array.isArray(detailSource.images) ? detailSource.images : [],
   };
   if (detailSource.pages !== undefined) detail.pages = detailSource.pages;
+  if (detailSource.generalInfo !== undefined) detail.generalInfo = detailSource.generalInfo;
 
   return {
     id,
@@ -330,6 +342,7 @@ function sanitizeBackupItem(raw) {
     detail,
     "required-white-shirt": Boolean(safe["required-white-shirt"]),
     "required-food": Boolean(safe["required-food"]),
+    "required-parent-signature": Boolean(safe["required-parent-signature"]),
     recoveryIssues: issues,
   };
 }

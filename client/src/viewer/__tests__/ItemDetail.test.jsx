@@ -5,11 +5,25 @@ import { vi } from "vitest";
 import { ItemDetail } from "../ItemDetail";
 import * as LightboxProvider from "../LightboxProvider";
 
-function baseItem(detail) {
-  return { full: "Tuesday, 16.3.2027", detail };
+function baseItem(detail, overrides = {}) {
+  return { full: "Tuesday, 16.3.2027", detail, ...overrides };
 }
 
 describe("ItemDetail", () => {
+  it("renders detail.generalInfo as free text when present", () => {
+    render(<ItemDetail item={baseItem({ generalInfo: "arrive 15 minutes early" })} />);
+    expect(screen.getByText("arrive 15 minutes early")).toBeInTheDocument();
+  });
+
+  it("does not render a general-info row when detail.generalInfo is absent", () => {
+    render(<ItemDetail item={baseItem({})} />);
+    expect(screen.queryByText("מידע כללי")).not.toBeInTheDocument();
+  });
+
+  it("shows the parent-signature note only when required-parent-signature is true", () => {
+    render(<ItemDetail item={baseItem({}, { "required-parent-signature": true })} />);
+    expect(screen.getByText("יש להחזיר אישור הורים חתום")).toBeInTheDocument();
+  });
   it("renders a real link as a clickable anchor", () => {
     render(<ItemDetail item={baseItem({ links: [{ label: "Site", url: "https://example.com" }] })} />);
     const link = screen.getByRole("link", { name: /Site/ });

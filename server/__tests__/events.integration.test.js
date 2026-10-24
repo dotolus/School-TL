@@ -22,7 +22,9 @@ describe("GET /api/events", () => {
       title: "Math test",
       short: "16.3",
       full: "Tuesday, 16.3.2027",
+      detail: { generalInfo: "bring a calculator" },
       "required-white-shirt": true,
+      "required-parent-signature": true,
     });
 
     const res = await request(app).get("/api/events");
@@ -38,6 +40,8 @@ describe("GET /api/events", () => {
       fullDate: "Tuesday, 16.3.2027",
       requiresWhiteShirt: true,
       requiresFood: false,
+      requiresParentSignature: true,
+      detail: { generalInfo: "bring a calculator" },
     });
     // internal field names must not leak through the public contract
     expect(event.m).toBeUndefined();

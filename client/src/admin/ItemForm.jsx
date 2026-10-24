@@ -18,10 +18,12 @@ function emptyForm() {
     short: "",
     full: "",
     pages: "",
+    generalInfo: "",
     words: "",
     linksText: "",
     requiredWhiteShirt: false,
     requiredFood: false,
+    requiredParentSignature: false,
   };
 }
 
@@ -36,10 +38,12 @@ function itemToForm(item) {
     short: item.short,
     full: item.full,
     pages: d.pages || "",
+    generalInfo: d.generalInfo || "",
     words: (d.words || []).join(", "),
     linksText: linksToText(d.links),
     requiredWhiteShirt: !!item["required-white-shirt"],
     requiredFood: !!item["required-food"],
+    requiredParentSignature: !!item["required-parent-signature"],
   };
 }
 
@@ -65,6 +69,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
         full: form.full,
         detail: {
           pages: form.pages || undefined,
+          generalInfo: form.generalInfo || undefined,
           words: form.words
             ? form.words.split(",").map((w) => w.trim()).filter(Boolean)
             : undefined,
@@ -72,6 +77,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
         },
         "required-white-shirt": form.requiredWhiteShirt,
         "required-food": form.requiredFood,
+        "required-parent-signature": form.requiredParentSignature,
       };
       await onSubmit(payload);
     } catch (err) {
@@ -122,6 +128,10 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
         <input type="text" value={form.pages} onChange={update("pages")} />
       </label>
       <label>
+        מידע כללי (אופציונלי)
+        <textarea rows={3} value={form.generalInfo} onChange={update("generalInfo")} />
+      </label>
+      <label>
         רשימת מילים, מופרדות בפסיקים (אופציונלי)
         <input type="text" value={form.words} onChange={update("words")} />
       </label>
@@ -146,6 +156,15 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
           style={{ width: "auto" }}
         />
         יש צורך להביא אוכל
+      </label>
+      <label style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <input
+          type="checkbox"
+          checked={form.requiredParentSignature}
+          onChange={updateChecked("requiredParentSignature")}
+          style={{ width: "auto" }}
+        />
+        יש צורך באישור הורים חתום
       </label>
       {initial && (
         <label>

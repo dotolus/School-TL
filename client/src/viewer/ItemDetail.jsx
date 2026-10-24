@@ -20,6 +20,18 @@ export function ItemDetail({ item }) {
             <dd>יש להביא אוכל / חטיף</dd>
           </>
         )}
+        {item["required-parent-signature"] && (
+          <>
+            <dt>אישור הורים</dt>
+            <dd>יש להחזיר אישור הורים חתום</dd>
+          </>
+        )}
+        {d.generalInfo && (
+          <>
+            <dt>מידע כללי</dt>
+            <dd>{d.generalInfo}</dd>
+          </>
+        )}
         {d.pages && (
           <>
             <dt>עמודים בספר</dt>

@@ -21,8 +21,16 @@ describe("ItemRow", () => {
     expect(screen.getByText("חג / חופשה")).toBeInTheDocument();
   });
 
-  it("shows no reminder badges when neither flag is set", () => {
+  it("shows no reminder badges when no flags are set", () => {
     render(<ItemRow item={baseItem()} />);
+    expect(screen.queryByTitle("יש להביא חולצה לבנה")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("יש להביא אוכל")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("יש צורך באישור הורים")).not.toBeInTheDocument();
+  });
+
+  it("shows the parent-signature badge only when required-parent-signature is true", () => {
+    render(<ItemRow item={baseItem({ "required-parent-signature": true })} />);
+    expect(screen.getByTitle("יש צורך באישור הורים")).toBeInTheDocument();
     expect(screen.queryByTitle("יש להביא חולצה לבנה")).not.toBeInTheDocument();
     expect(screen.queryByTitle("יש להביא אוכל")).not.toBeInTheDocument();
   });
@@ -39,11 +47,18 @@ describe("ItemRow", () => {
     expect(screen.queryByTitle("יש להביא חולצה לבנה")).not.toBeInTheDocument();
   });
 
-  it("shows both badges when both flags are true", () => {
+  it("shows all badges when all flags are true", () => {
     render(
-      <ItemRow item={baseItem({ "required-white-shirt": true, "required-food": true })} />
+      <ItemRow
+        item={baseItem({
+          "required-white-shirt": true,
+          "required-food": true,
+          "required-parent-signature": true,
+        })}
+      />
     );
     expect(screen.getByTitle("יש להביא חולצה לבנה")).toBeInTheDocument();
     expect(screen.getByTitle("יש להביא אוכל")).toBeInTheDocument();
+    expect(screen.getByTitle("יש צורך באישור הורים")).toBeInTheDocument();
   });
 });
