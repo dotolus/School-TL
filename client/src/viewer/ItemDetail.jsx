@@ -1,8 +1,10 @@
-import { useLightbox } from "./LightboxProvider";
+import { useAttachmentViewer } from "./AttachmentViewerProvider";
+
+const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
 
 export function ItemDetail({ item }) {
   const d = item.detail || {};
-  const lightbox = useLightbox();
+  const viewer = useAttachmentViewer();
   return (
     <div className="detail">
       <dl>
@@ -70,20 +72,40 @@ export function ItemDetail({ item }) {
             </dd>
           </>
         )}
-        {d.images && d.images.length > 0 && (
+        {d.attachments && d.attachments.length > 0 && (
           <>
-            <dt>תמונות</dt>
+            <dt>קבצים מצורפים</dt>
             <dd>
               <div className="image-thumbs">
-                {d.images.map((img) => (
-                  <button
-                    key={img.id}
-                    type="button"
-                    className="image-thumb"
-                    onClick={() => lightbox?.open(img.url)}
-                  >
-                    <img src={img.url} alt="" />
-                  </button>
+                {d.attachments.map((a) => (
+                  <div key={a.id} className="attachment-item">
+                    {a.kind === "image" ? (
+                      <button
+                        type="button"
+                        className="image-thumb"
+                        onClick={() => viewer?.open({ url: a.url, mimeType: a.mimeType, filename: a.filename, kind: a.kind })}
+                      >
+                        <img src={a.url} alt="" />
+                      </button>
+                    ) : (
+                      <div className="attachment-thumb">
+                        <span>{ICON_BY_KIND[a.kind]}</span>
+                        <span>{a.filename}</span>
+                        {a.kind !== "zip" && (
+                          <button
+                            type="button"
+                            className="btn secondary"
+                            onClick={() => viewer?.open({ url: a.url, mimeType: a.mimeType, filename: a.filename, kind: a.kind })}
+                          >
+                            תצוגה מקדימה
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <a href={a.url} download={a.filename} className="btn secondary">
+                      הורדה
+                    </a>
+                  </div>
                 ))}
               </div>
             </dd>

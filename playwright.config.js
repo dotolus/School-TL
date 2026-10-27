@@ -37,7 +37,7 @@ module.exports = defineConfig({
       ADMIN_PASSWORD: "e2e-test-password",
       SESSION_SECRET: "e2e-test-secret",
       // Force the self-contained Firestore emulator (e2e/start-server.js)
-      // and imageStore.js's data-URI fallback, even if the shell running
+      // and fileStore.js's data-URI fallback, even if the shell running
       // this happens to have real credentials exported.
       FIREBASE_SERVICE_ACCOUNT_JSON: "",
       CLOUDINARY_CLOUD_NAME: "",

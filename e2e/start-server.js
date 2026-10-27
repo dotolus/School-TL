@@ -4,8 +4,8 @@
 // concurrently) and seeds it from the committed demo data
 // (server/data/timeline.json), matching the "a real deployment always
 // starts from committed seed data" rationale in playwright.config.js.
-// Cloudinary is deliberately left unconfigured here so image-upload specs
-// exercise imageStore.js's data-URI fallback instead of needing real
+// Cloudinary is deliberately left unconfigured here so attachment-upload
+// specs exercise fileStore.js's data-URI fallback instead of needing real
 // credentials in CI.
 const fs = require("fs");
 const path = require("path");

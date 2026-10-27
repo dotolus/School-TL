@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ImageManager } from "./ImageManager";
+import { AttachmentManager } from "./AttachmentManager";
 import { linksToText, textToLinks } from "./linkFormat";
 
 const TYPES = [
@@ -168,8 +168,8 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
       </label>
       {initial && (
         <label>
-          תמונות
-          <ImageManager itemId={initial.id} initialImages={initial.detail?.images || []} />
+          קבצים מצורפים
+          <AttachmentManager itemId={initial.id} initialAttachments={initial.detail?.attachments || []} />
         </label>
       )}
       {error && <p className="error-text">{error}</p>}

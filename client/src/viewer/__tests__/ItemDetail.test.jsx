@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
 import { ItemDetail } from "../ItemDetail";
-import * as LightboxProvider from "../LightboxProvider";
+import * as AttachmentViewerProvider from "../AttachmentViewerProvider";
 
 function baseItem(detail, overrides = {}) {
   return { full: "Tuesday, 16.3.2027", detail, ...overrides };
@@ -46,13 +46,55 @@ describe("ItemDetail", () => {
     expect(screen.getByText("dog")).toBeInTheDocument();
   });
 
-  it("clicking an image thumbnail opens the lightbox with its url", () => {
+  it("clicking an image thumbnail opens the viewer with its attachment info", () => {
     const open = vi.fn();
-    vi.spyOn(LightboxProvider, "useLightbox").mockReturnValue({ open });
+    vi.spyOn(AttachmentViewerProvider, "useAttachmentViewer").mockReturnValue({ open });
 
-    render(<ItemDetail item={baseItem({ images: [{ id: "i1", url: "/uploads/a/b.png" }] })} />);
+    render(
+      <ItemDetail
+        item={baseItem({
+          attachments: [{ id: "i1", url: "/uploads/a/b.png", mimeType: "image/png", filename: "b.png", kind: "image" }],
+        })}
+      />
+    );
     fireEvent.click(screen.getByRole("button"));
 
-    expect(open).toHaveBeenCalledWith("/uploads/a/b.png");
+    expect(open).toHaveBeenCalledWith({ url: "/uploads/a/b.png", mimeType: "image/png", filename: "b.png", kind: "image" });
+  });
+
+  it("shows a preview button for a pdf attachment but not for a zip attachment", () => {
+    vi.spyOn(AttachmentViewerProvider, "useAttachmentViewer").mockReturnValue({ open: vi.fn() });
+
+    render(
+      <ItemDetail
+        item={baseItem({
+          attachments: [
+            { id: "p1", url: "/uploads/a/b.pdf", mimeType: "application/pdf", filename: "b.pdf", kind: "pdf" },
+            { id: "z1", url: "/uploads/a/b.zip", mimeType: "application/zip", filename: "b.zip", kind: "zip" },
+          ],
+        })}
+      />
+    );
+
+    expect(screen.getByText("תצוגה מקדימה")).toBeInTheDocument();
+    expect(screen.getAllByText("תצוגה מקדימה")).toHaveLength(1);
+  });
+
+  it("renders a download link for every attachment kind, including zip", () => {
+    vi.spyOn(AttachmentViewerProvider, "useAttachmentViewer").mockReturnValue({ open: vi.fn() });
+
+    render(
+      <ItemDetail
+        item={baseItem({
+          attachments: [
+            { id: "z1", url: "/uploads/a/b.zip", mimeType: "application/zip", filename: "b.zip", kind: "zip" },
+          ],
+        })}
+      />
+    );
+
+    const link = screen.getByText("הורדה");
+    expect(link).toHaveAttribute("href", "/uploads/a/b.zip");
+    expect(link).toHaveAttribute("download", "b.zip");
   });
 });

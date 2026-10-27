@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { api } from "../api";
 
-export function ImageManager({ itemId, initialImages }) {
-  const [images, setImages] = useState(initialImages || []);
+const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
+
+export function AttachmentManager({ itemId, initialAttachments }) {
+  const [attachments, setAttachments] = useState(initialAttachments || []);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef(null);
@@ -13,8 +15,8 @@ export function ImageManager({ itemId, initialImages }) {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.uploadItemImage(itemId, file);
-      setImages(updated.detail?.images || []);
+      const updated = await api.uploadItemAttachment(itemId, file);
+      setAttachments(updated.detail?.attachments || []);
       fileInput.current.value = "";
     } catch (err) {
       setError(err.message);
@@ -23,12 +25,12 @@ export function ImageManager({ itemId, initialImages }) {
     }
   };
 
-  const handleDelete = async (imageId) => {
+  const handleDelete = async (attachmentId) => {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.deleteItemImage(itemId, imageId);
-      setImages(updated.detail?.images || []);
+      const updated = await api.deleteItemAttachment(itemId, attachmentId);
+      setAttachments(updated.detail?.attachments || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,16 +41,23 @@ export function ImageManager({ itemId, initialImages }) {
   return (
     <div>
       <div className="image-thumbs">
-        {images.map((img) => (
-          <div key={img.id} style={{ position: "relative" }}>
-            <div className="image-thumb">
-              <img src={img.url} alt="" />
-            </div>
+        {attachments.map((a) => (
+          <div key={a.id} style={{ position: "relative" }}>
+            {a.kind === "image" ? (
+              <div className="image-thumb">
+                <img src={a.url} alt="" />
+              </div>
+            ) : (
+              <div className="attachment-thumb">
+                <span>{ICON_BY_KIND[a.kind]}</span>
+                <span>{a.filename}</span>
+              </div>
+            )}
             <button
               type="button"
               className="btn danger"
               style={{ position: "absolute", top: -8, insetInlineEnd: -8, padding: "2px 7px" }}
-              onClick={() => handleDelete(img.id)}
+              onClick={() => handleDelete(a.id)}
               disabled={busy}
             >
               ✕
@@ -57,7 +66,12 @@ export function ImageManager({ itemId, initialImages }) {
         ))}
       </div>
       <div className="admin-row" style={{ marginTop: 10 }}>
-        <input type="file" accept="image/*" ref={fileInput} disabled={busy} />
+        <input
+          type="file"
+          accept="image/*,application/pdf,text/plain,application/zip,.zip"
+          ref={fileInput}
+          disabled={busy}
+        />
         <button type="button" className="btn secondary" onClick={handleUpload} disabled={busy}>
           העלאה
         </button>

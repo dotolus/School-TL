@@ -12,13 +12,13 @@ if (configured) {
 }
 
 // Uploads never delete the backing file on removal - see the note on
-// detail.images in CLAUDE.md - so there's no deleteImage() here either.
-function uploadImage(buffer, mimetype, folder) {
+// detail.attachments in CLAUDE.md - so there's no deleteFile() here either.
+function uploadFile(buffer, mimetype, folder) {
   if (!configured) {
     // No Cloudinary account configured (e.g. a fresh clone, or CI/e2e) -
     // fall back to an inline data URI so uploads still work end-to-end
     // instead of failing outright. Not meant for production use.
-    console.warn("[imageStore] Cloudinary is not configured; storing image as a data URI");
+    console.warn("[fileStore] Cloudinary is not configured; storing file as a data URI");
     return Promise.resolve({
       url: `data:${mimetype};base64,${buffer.toString("base64")}`,
       publicId: null,
@@ -26,10 +26,11 @@ function uploadImage(buffer, mimetype, folder) {
   }
 
   const cloudinary = require("cloudinary").v2;
+  const resourceType = mimetype.startsWith("image/") ? "image" : "raw";
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ folder, resource_type: "image" }, (err, result) => {
+    const stream = cloudinary.uploader.upload_stream({ folder, resource_type: resourceType }, (err, result) => {
       if (err) {
-        console.error("[imageStore] Cloudinary upload failed:", err.message);
+        console.error("[fileStore] Cloudinary upload failed:", err.message);
         return reject(err);
       }
       resolve({ url: result.secure_url, publicId: result.public_id });
@@ -38,4 +39,4 @@ function uploadImage(buffer, mimetype, folder) {
   });
 }
 
-module.exports = { uploadImage };
+module.exports = { uploadFile };

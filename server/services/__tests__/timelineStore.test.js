@@ -64,10 +64,10 @@ describe("validateItemInput", () => {
     );
   });
 
-  it("rejects detail.images that isn't an array", () => {
+  it("rejects detail.attachments that isn't an array", () => {
     expect(() =>
-      store.validateItemInput(validItem({ detail: { images: "nope" } }))
-    ).toThrow(/detail.images must be an array/);
+      store.validateItemInput(validItem({ detail: { attachments: "nope" } }))
+    ).toThrow(/detail.attachments must be an array/);
   });
 
   it("rejects detail.generalInfo that isn't a string", () => {
@@ -248,5 +248,13 @@ describe("restoreAllFromBackup", () => {
     await expect(store.restoreAllFromBackup({ not: "an array" })).rejects.toThrow(
       /backup items must be an array/
     );
+  });
+
+  it("defaults a non-array detail.attachments to an empty array", async () => {
+    const result = await store.restoreAllFromBackup([
+      { ...validItem({ title: "C" }), id: "broken-3", detail: { attachments: "nope" } },
+    ]);
+    expect(result.restored).toHaveLength(1);
+    expect(result.restored[0].detail.attachments).toEqual([]);
   });
 });
