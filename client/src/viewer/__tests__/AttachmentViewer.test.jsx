@@ -81,4 +81,13 @@ describe("AttachmentViewer - pdf/text", () => {
     fireEvent.click(screen.getByText("סגירה ✕"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("renders the iframe from a converted blob url, not the raw data: URI, for the dev fallback", () => {
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL: vi.fn() });
+    render(
+      <AttachmentViewer url="data:application/pdf;base64,aGVsbG8=" filename="b.pdf" kind="pdf" onClose={vi.fn()} />
+    );
+    expect(document.querySelector("iframe")).toHaveAttribute("src", "blob:mock-url");
+    vi.unstubAllGlobals();
+  });
 });

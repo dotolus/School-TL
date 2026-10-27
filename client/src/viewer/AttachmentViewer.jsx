@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBlobUrl } from "./useBlobUrl";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -11,6 +12,7 @@ function clamp(scale) {
 export function AttachmentViewer({ url, filename, kind, onClose }) {
   const [scale, setScale] = useState(1);
   const zoomable = kind === "image";
+  const previewUrl = useBlobUrl(url);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -55,7 +57,7 @@ export function AttachmentViewer({ url, filename, kind, onClose }) {
             draggable={false}
           />
         ) : (
-          <iframe src={url} title={filename} />
+          <iframe src={previewUrl} title={filename} />
         )}
       </div>
     </div>

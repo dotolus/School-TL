@@ -97,4 +97,30 @@ describe("ItemDetail", () => {
     expect(link).toHaveAttribute("href", "/uploads/a/b.zip");
     expect(link).toHaveAttribute("download", "b.zip");
   });
+
+  it("downloads via a converted blob url, not the raw data: URI, for the dev fallback", () => {
+    vi.spyOn(AttachmentViewerProvider, "useAttachmentViewer").mockReturnValue({ open: vi.fn() });
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL: vi.fn() });
+
+    render(
+      <ItemDetail
+        item={baseItem({
+          attachments: [
+            {
+              id: "p1",
+              url: "data:application/pdf;base64,aGVsbG8=",
+              mimeType: "application/pdf",
+              filename: "מבחן.pdf",
+              kind: "pdf",
+            },
+          ],
+        })}
+      />
+    );
+
+    const link = screen.getByText("הורדה");
+    expect(link).toHaveAttribute("href", "blob:mock-url");
+    expect(link).toHaveAttribute("download", "מבחן.pdf");
+    vi.unstubAllGlobals();
+  });
 });
