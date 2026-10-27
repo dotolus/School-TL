@@ -3,7 +3,7 @@ import { api } from "../api";
 
 const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
 
-export function AttachmentManager({ itemId, initialAttachments }) {
+export function AttachmentManager({ itemId, initialAttachments, onChange }) {
   const [attachments, setAttachments] = useState(initialAttachments || []);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -16,7 +16,9 @@ export function AttachmentManager({ itemId, initialAttachments }) {
     setError(null);
     try {
       const updated = await api.uploadItemAttachment(itemId, file);
-      setAttachments(updated.detail?.attachments || []);
+      const next = updated.detail?.attachments || [];
+      setAttachments(next);
+      onChange?.(next);
       fileInput.current.value = "";
     } catch (err) {
       setError(err.message);
@@ -30,7 +32,9 @@ export function AttachmentManager({ itemId, initialAttachments }) {
     setError(null);
     try {
       const updated = await api.deleteItemAttachment(itemId, attachmentId);
-      setAttachments(updated.detail?.attachments || []);
+      const next = updated.detail?.attachments || [];
+      setAttachments(next);
+      onChange?.(next);
     } catch (err) {
       setError(err.message);
     } finally {

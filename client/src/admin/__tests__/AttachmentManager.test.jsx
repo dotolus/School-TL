@@ -63,6 +63,35 @@ describe("AttachmentManager", () => {
     await waitFor(() => expect(screen.queryByText("a.pdf")).not.toBeInTheDocument());
   });
 
+  it("notifies the parent via onChange after an upload", async () => {
+    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+    const next = [{ id: "a1", url: "/uploads/notes.txt", filename: "notes.txt", kind: "text" }];
+    api.uploadItemAttachment.mockResolvedValue({ detail: { attachments: next } });
+    const onChange = vi.fn();
+
+    render(<AttachmentManager itemId="item-1" initialAttachments={[]} onChange={onChange} />);
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    fireEvent.click(screen.getByText("העלאה"));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(next));
+  });
+
+  it("notifies the parent via onChange after a delete", async () => {
+    api.deleteItemAttachment.mockResolvedValue({ detail: { attachments: [] } });
+    const onChange = vi.fn();
+
+    render(
+      <AttachmentManager
+        itemId="item-1"
+        initialAttachments={[{ id: "a1", url: "/uploads/a.pdf", filename: "a.pdf", kind: "pdf" }]}
+        onChange={onChange}
+      />
+    );
+    fireEvent.click(screen.getByText("✕"));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([]));
+  });
+
   it("shows an error if upload fails", async () => {
     const file = new File(["hello"], "notes.txt", { type: "text/plain" });
     api.uploadItemAttachment.mockRejectedValue(new Error("Upload failed"));
