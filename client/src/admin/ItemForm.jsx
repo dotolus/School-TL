@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ImageManager } from "./ImageManager";
+import { AttachmentManager } from "./AttachmentManager";
 import { linksToText, textToLinks } from "./linkFormat";
 
 const TYPES = [
@@ -49,6 +49,7 @@ function itemToForm(item) {
 
 export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
   const [form, setForm] = useState(() => itemToForm(initial));
+  const [attachments, setAttachments] = useState(() => initial?.detail?.attachments || []);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -74,6 +75,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
             ? form.words.split(",").map((w) => w.trim()).filter(Boolean)
             : undefined,
           links: form.linksText ? textToLinks(form.linksText) : undefined,
+          attachments,
         },
         "required-white-shirt": form.requiredWhiteShirt,
         "required-food": form.requiredFood,
@@ -168,8 +170,12 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
       </label>
       {initial && (
         <label>
-          תמונות
-          <ImageManager itemId={initial.id} initialImages={initial.detail?.images || []} />
+          קבצים מצורפים
+          <AttachmentManager
+            itemId={initial.id}
+            initialAttachments={attachments}
+            onChange={setAttachments}
+          />
         </label>
       )}
       {error && <p className="error-text">{error}</p>}

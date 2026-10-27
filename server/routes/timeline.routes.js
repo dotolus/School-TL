@@ -2,34 +2,47 @@ const express = require("express");
 const multer = require("multer");
 const crypto = require("crypto");
 const store = require("../services/timelineStore");
-const imageStore = require("../services/imageStore");
+const fileStore = require("../services/fileStore");
 const { requireAuth } = require("../middleware/auth");
 const asyncHandler = require("../utils/asyncHandler");
 
 const router = express.Router();
 
-const EXT_BY_MIME = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/gif": ".gif",
-  "image/webp": ".webp",
+// multer (via busboy) decodes multipart header values as latin1, but
+// browsers send the filename as UTF-8 bytes - so a non-ASCII (e.g. Hebrew)
+// originalname comes through as mojibake. Re-interpreting those latin1
+// characters' code points as the original UTF-8 bytes recovers the real
+// text; this is a no-op for plain ASCII filenames.
+function decodeOriginalFilename(originalname) {
+  return Buffer.from(originalname, "latin1").toString("utf8");
+}
+
+const KIND_BY_MIME = {
+  "image/jpeg": "image",
+  "image/png": "image",
+  "image/gif": "image",
+  "image/webp": "image",
+  "application/pdf": "pdf",
+  "text/plain": "text",
+  "application/zip": "zip",
+  "application/x-zip-compressed": "zip",
 };
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (!EXT_BY_MIME[file.mimetype]) {
-      return cb(new Error("Only JPEG, PNG, GIF, or WebP images are allowed"));
+    if (!KIND_BY_MIME[file.mimetype]) {
+      return cb(new Error("Only JPEG, PNG, GIF, WebP images, PDF, plain text, or zip files are allowed"));
     }
     cb(null, true);
   },
 });
 
-function uploadSingleImage(req, res, next) {
-  upload.single("image")(req, res, (err) => {
+function uploadSingleFile(req, res, next) {
+  upload.single("file")(req, res, (err) => {
     if (err) {
-      console.warn("[timeline] Image upload rejected:", err.message);
+      console.warn("[timeline] File upload rejected:", err.message);
       return res.status(400).json({ error: err.message });
     }
     next();
@@ -131,7 +144,12 @@ router.delete(
   })
 );
 
-function withImages(item, images) {
+function withAttachments(item, attachments) {
+  // Firestore rejects `undefined` field values, so the old `images` key
+  // (if present on an item created before this field was renamed) must be
+  // deleted outright rather than overwritten with `images: undefined`.
+  const restDetail = { ...item.detail };
+  delete restDetail.images;
   return {
     type: item.type,
     m: item.m,
@@ -139,7 +157,7 @@ function withImages(item, images) {
     title: item.title,
     short: item.short,
     full: item.full,
-    detail: { ...item.detail, images },
+    detail: { ...restDetail, attachments },
     "required-white-shirt": item["required-white-shirt"],
     "required-food": item["required-food"],
     "required-parent-signature": item["required-parent-signature"],
@@ -157,37 +175,45 @@ function requireExistingItem(req, res, next) {
 }
 
 router.post(
-  "/items/:id/images",
+  "/items/:id/attachments",
   requireAuth,
   requireExistingItem,
-  uploadSingleImage,
+  uploadSingleFile,
   asyncHandler(async (req, res) => {
     const item = await store.getItem(req.params.id);
     if (!req.file) {
-      console.warn(`[timeline] Image upload failed: no file provided for item ${req.params.id}`);
-      return res.status(400).json({ error: "No image file provided" });
+      console.warn(`[timeline] File upload failed: no file provided for item ${req.params.id}`);
+      return res.status(400).json({ error: "No file provided" });
     }
 
-    const { url, publicId } = await imageStore.uploadImage(req.file.buffer, req.file.mimetype, `eq-ppt/${item.id}`);
-    const image = { id: crypto.randomUUID(), url, publicId };
-    const images = [...(item.detail?.images || []), image];
-    const updated = await store.updateItem(item.id, withImages(item, images));
+    const { url, publicId } = await fileStore.uploadFile(req.file.buffer, req.file.mimetype, `eq-ppt/${item.id}`);
+    const attachment = {
+      id: crypto.randomUUID(),
+      url,
+      publicId,
+      filename: decodeOriginalFilename(req.file.originalname),
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      kind: KIND_BY_MIME[req.file.mimetype],
+    };
+    const attachments = [...(item.detail?.attachments || []), attachment];
+    const updated = await store.updateItem(item.id, withAttachments(item, attachments));
     res.status(201).json(updated);
   })
 );
 
 router.delete(
-  "/items/:id/images/:imageId",
+  "/items/:id/attachments/:attachmentId",
   requireAuth,
   asyncHandler(async (req, res) => {
     const item = await store.getItem(req.params.id);
     if (!item) {
-      console.warn(`[timeline] Image delete failed: item ${req.params.id} not found`);
+      console.warn(`[timeline] File delete failed: item ${req.params.id} not found`);
       return res.status(404).json({ error: "Item not found" });
     }
 
-    const images = (item.detail?.images || []).filter((img) => img.id !== req.params.imageId);
-    const updated = await store.updateItem(item.id, withImages(item, images));
+    const attachments = (item.detail?.attachments || []).filter((a) => a.id !== req.params.attachmentId);
+    const updated = await store.updateItem(item.id, withAttachments(item, attachments));
     res.json(updated);
   })
 );

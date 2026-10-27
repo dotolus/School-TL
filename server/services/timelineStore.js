@@ -37,8 +37,8 @@ function validateItemInput(input) {
   if (detail.words && !Array.isArray(detail.words)) {
     throw new Error("detail.words must be an array");
   }
-  if (detail.images && !Array.isArray(detail.images)) {
-    throw new Error("detail.images must be an array");
+  if (detail.attachments && !Array.isArray(detail.attachments)) {
+    throw new Error("detail.attachments must be an array");
   }
   if (detail.generalInfo !== undefined && typeof detail.generalInfo !== "string") {
     throw new Error("detail.generalInfo must be a string");
@@ -328,7 +328,7 @@ function sanitizeBackupItem(raw) {
   const detail = {
     words: Array.isArray(detailSource.words) ? detailSource.words : [],
     links: Array.isArray(detailSource.links) ? detailSource.links : [],
-    images: Array.isArray(detailSource.images) ? detailSource.images : [],
+    attachments: Array.isArray(detailSource.attachments) ? detailSource.attachments : [],
   };
   if (detailSource.pages !== undefined) detail.pages = detailSource.pages;
   if (detailSource.generalInfo !== undefined) detail.generalInfo = detailSource.generalInfo;

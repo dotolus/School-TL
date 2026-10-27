@@ -41,10 +41,10 @@ export const api = {
   logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request("/auth/me"),
 
-  uploadItemImage: async (itemId, file) => {
+  uploadItemAttachment: async (itemId, file) => {
     const formData = new FormData();
-    formData.append("image", file);
-    const res = await fetch(`/api/timeline/items/${itemId}/images`, {
+    formData.append("file", file);
+    const res = await fetch(`/api/timeline/items/${itemId}/attachments`, {
       method: "POST",
       credentials: "include",
       body: formData,
@@ -55,8 +55,8 @@ export const api = {
     }
     return res.json();
   },
-  deleteItemImage: (itemId, imageId) =>
-    request(`/timeline/items/${itemId}/images/${imageId}`, { method: "DELETE" }),
+  deleteItemAttachment: (itemId, attachmentId) =>
+    request(`/timeline/items/${itemId}/attachments/${attachmentId}`, { method: "DELETE" }),
 
   getHistory: ({ itemId, limit } = {}) => {
     const params = new URLSearchParams();

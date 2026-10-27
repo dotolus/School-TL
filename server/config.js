@@ -41,9 +41,9 @@ module.exports = {
 
   // Event images are uploaded to Cloudinary instead of local disk, for the
   // same reason - local disk doesn't survive a redeploy. If these are unset
-  // (e.g. a contributor hasn't set up a Cloudinary account, or CI), image
+  // (e.g. a contributor hasn't set up a Cloudinary account, or CI), file
   // uploads fall back to inline data URIs instead of failing outright - see
-  // server/services/imageStore.js.
+  // server/services/fileStore.js.
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,

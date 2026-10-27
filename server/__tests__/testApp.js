@@ -37,7 +37,7 @@ async function createTestApp() {
   // dotenv (loaded by config.js) never overwrites an already-set env var, so
   // blanking these out here - rather than leaving them unset - keeps a real
   // .env's Cloudinary credentials from leaking into tests and hitting the
-  // network; imageStore.js falls back to data URIs when these are empty.
+  // network; fileStore.js falls back to data URIs when these are empty.
   process.env.CLOUDINARY_CLOUD_NAME = "";
   process.env.CLOUDINARY_API_KEY = "";
   process.env.CLOUDINARY_API_SECRET = "";

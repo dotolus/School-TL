@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useBlobUrl } from "./useBlobUrl";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -8,8 +9,10 @@ function clamp(scale) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
 
-export function Lightbox({ url, onClose }) {
+export function AttachmentViewer({ url, filename, kind, onClose }) {
   const [scale, setScale] = useState(1);
+  const zoomable = kind === "image";
+  const previewUrl = useBlobUrl(url);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -20,6 +23,7 @@ export function Lightbox({ url, onClose }) {
   }, [onClose]);
 
   const handleWheel = (e) => {
+    if (!zoomable) return;
     e.preventDefault();
     setScale((s) => clamp(s + (e.deltaY < 0 ? STEP : -STEP)));
   };
@@ -27,26 +31,34 @@ export function Lightbox({ url, onClose }) {
   return (
     <div className="lightbox-backdrop" onClick={onClose}>
       <div className="lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
-        <button className="btn secondary" onClick={() => setScale((s) => clamp(s - STEP))}>
-          −
-        </button>
-        <button className="btn secondary" onClick={() => setScale(1)}>
-          {Math.round(scale * 100)}%
-        </button>
-        <button className="btn secondary" onClick={() => setScale((s) => clamp(s + STEP))}>
-          +
-        </button>
+        {zoomable && (
+          <>
+            <button className="btn secondary" onClick={() => setScale((s) => clamp(s - STEP))}>
+              −
+            </button>
+            <button className="btn secondary" onClick={() => setScale(1)}>
+              {Math.round(scale * 100)}%
+            </button>
+            <button className="btn secondary" onClick={() => setScale((s) => clamp(s + STEP))}>
+              +
+            </button>
+          </>
+        )}
         <button className="btn danger" onClick={onClose}>
           סגירה ✕
         </button>
       </div>
       <div className="lightbox-frame" onClick={(e) => e.stopPropagation()} onWheel={handleWheel}>
-        <img
-          src={url}
-          alt=""
-          style={{ transform: `scale(${scale})` }}
-          draggable={false}
-        />
+        {zoomable ? (
+          <img
+            src={url}
+            alt=""
+            style={{ transform: `scale(${scale})` }}
+            draggable={false}
+          />
+        ) : (
+          <iframe src={previewUrl} title={filename} />
+        )}
       </div>
     </div>
   );
