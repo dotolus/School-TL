@@ -8,6 +8,15 @@ const asyncHandler = require("../utils/asyncHandler");
 
 const router = express.Router();
 
+// multer (via busboy) decodes multipart header values as latin1, but
+// browsers send the filename as UTF-8 bytes - so a non-ASCII (e.g. Hebrew)
+// originalname comes through as mojibake. Re-interpreting those latin1
+// characters' code points as the original UTF-8 bytes recovers the real
+// text; this is a no-op for plain ASCII filenames.
+function decodeOriginalFilename(originalname) {
+  return Buffer.from(originalname, "latin1").toString("utf8");
+}
+
 const KIND_BY_MIME = {
   "image/jpeg": "image",
   "image/png": "image",
@@ -182,7 +191,7 @@ router.post(
       id: crypto.randomUUID(),
       url,
       publicId,
-      filename: req.file.originalname,
+      filename: decodeOriginalFilename(req.file.originalname),
       mimeType: req.file.mimetype,
       size: req.file.size,
       kind: KIND_BY_MIME[req.file.mimetype],

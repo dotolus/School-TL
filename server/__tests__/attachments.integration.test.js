@@ -58,6 +58,15 @@ describe("item attachments", () => {
     expect(res.body.detail.attachments[0].kind).toBe("pdf");
   });
 
+  it("preserves a non-ASCII (Hebrew) filename instead of mojibake", async () => {
+    const id = await createItem();
+    const res = await agent
+      .post(`/api/timeline/items/${id}/attachments`)
+      .attach("file", Buffer.from("%PDF-1.4 fake"), { filename: "מבחן.pdf", contentType: "application/pdf" });
+    expect(res.status).toBe(201);
+    expect(res.body.detail.attachments[0].filename).toBe("מבחן.pdf");
+  });
+
   it("uploads a text file with kind \"text\"", async () => {
     const id = await createItem();
     const res = await agent
