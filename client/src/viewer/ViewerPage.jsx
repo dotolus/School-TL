@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../api";
+import { useDatasetApi } from "../useDatasetApi";
 import { Masthead } from "./Masthead";
 import { Timeline } from "./Timeline";
 import { Footer } from "./Footer";
 import { groupByMonth } from "./groupByMonth";
 
 export function ViewerPage() {
+  const api = useDatasetApi();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const currentMonthRef = useRef(null);
@@ -15,7 +16,7 @@ export function ViewerPage() {
       .getTimeline()
       .then((data) => setItems(data.items))
       .catch((err) => setError(err.message));
-  }, []);
+  }, [api]);
 
   const months = useMemo(() => (items ? groupByMonth(items) : []), [items]);
 

@@ -12,10 +12,13 @@ module.exports = defineConfig({
     // which Node's resolution algorithm would otherwise prefer over the root
     // copy that @testing-library/react resolves against - two React copies at
     // once breaks hooks ("Invalid hook call"). Force everything to the one
-    // at the repo root.
+    // at the repo root. react-router-dom needs the same treatment: resolved
+    // from client/node_modules, its own internal `require("react")` would
+    // otherwise land on client's react instead of this same root one.
     alias: {
       react: path.resolve(__dirname, "node_modules/react"),
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
+      "react-router-dom": path.resolve(__dirname, "node_modules/react-router-dom"),
     },
   },
   test: {

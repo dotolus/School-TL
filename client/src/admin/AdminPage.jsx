@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useDatasetApi, useDatasetTag } from "../useDatasetApi";
 import { LoginForm } from "./LoginForm";
 import { ItemForm } from "./ItemForm";
 import { ItemList } from "./ItemList";
@@ -11,6 +12,8 @@ import { BackupPanel } from "./BackupPanel";
 import { APP_VERSION } from "../version";
 
 export function AdminPage() {
+  const datasetApi = useDatasetApi();
+  const tag = useDatasetTag();
   const [isAdmin, setIsAdmin] = useState(null);
   const [items, setItems] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -24,16 +27,16 @@ export function AdminPage() {
       .catch(() => setIsAdmin(false));
   }, []);
 
-  const loadItems = () => {
-    api
+  const loadItems = useCallback(() => {
+    datasetApi
       .getTimeline()
       .then((data) => setItems(data.items))
       .catch((err) => setError(err.message));
-  };
+  }, [datasetApi]);
 
   useEffect(() => {
     if (isAdmin) loadItems();
-  }, [isAdmin]);
+  }, [isAdmin, loadItems]);
 
   if (isAdmin === null) return <div className="admin-page">טוען...</div>;
 
@@ -51,8 +54,11 @@ export function AdminPage() {
         <h2>
           ניהול ציר שנת הלימודים <span className="app-version">v{APP_VERSION}</span>
         </h2>
+        <p className="active-dataset">
+          עריכת ציר הזמן: בית ספר {tag.school} · כיתה {tag.class} · שנת לימודים {tag.period}
+        </p>
         <div className="admin-actions">
-          <Link className="btn secondary" to="/">
+          <Link className="btn secondary" to={`/${tag.school}/${tag.period}/${tag.class}`}>
             חזרה לציר
           </Link>
           <button
@@ -80,7 +86,7 @@ export function AdminPage() {
             submitLabel="הוספה"
             onCancel={() => setShowAddForm(false)}
             onSubmit={async (payload) => {
-              await api.addItem(payload);
+              await datasetApi.addItem(payload);
               setShowAddForm(false);
               loadItems();
             }}
@@ -104,11 +110,11 @@ export function AdminPage() {
         <ItemList
           items={items}
           onUpdate={async (id, payload) => {
-            await api.updateItem(id, payload);
+            await datasetApi.updateItem(id, payload);
             loadItems();
           }}
           onDelete={async (id) => {
-            await api.deleteItem(id);
+            await datasetApi.deleteItem(id);
             loadItems();
           }}
           onShowHistory={(id) => setHistoryItemId(id)}
