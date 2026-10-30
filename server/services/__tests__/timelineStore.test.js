@@ -16,15 +16,13 @@ let tag;
 
 beforeEach(() => {
   applyEmulatorEnv();
-  process.env.ACTIVE_SCHOOL = `test-${crypto.randomUUID()}`;
-  tag = { school: process.env.ACTIVE_SCHOOL, class: "e4", period: "2026-2027" };
+  tag = { school: `test-${crypto.randomUUID()}`, class: "e4", period: "2026-2027" };
   clearServerModuleCache();
   store = require("../timelineStore");
   historyStore = require("../historyStore");
 });
 
 afterEach(() => {
-  delete process.env.ACTIVE_SCHOOL;
   delete process.env.FIRESTORE_EMULATOR_HOST;
   delete process.env.FIREBASE_PROJECT_ID;
 });
@@ -119,7 +117,7 @@ describe("timelineStore CRUD + history integration", () => {
     expect(await store.getItem(tag, created.id)).toBeNull();
     expect(await store.getAll(tag)).toEqual([]);
 
-    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
+    const deleteEntry = (await historyStore.list(tag, { itemId: created.id })).find((e) => e.op === "delete");
     expect(deleteEntry).toBeTruthy();
     expect(deleteEntry.before.title).toBe("to delete");
   });
@@ -129,7 +127,7 @@ describe("timelineStore CRUD + history integration", () => {
     await store.deleteItem(tag, created.id);
     expect(await store.getItem(tag, created.id)).toBeNull();
 
-    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
+    const deleteEntry = (await historyStore.list(tag, { itemId: created.id })).find((e) => e.op === "delete");
     const restored = await store.restoreFromHistory(tag, deleteEntry.id);
     expect(restored.title).toBe("to delete");
     expect(await store.getItem(tag, created.id)).not.toBeNull();
@@ -140,7 +138,7 @@ describe("timelineStore CRUD + history integration", () => {
     await store.updateItem(tag, created.id, validItem({ title: "v2" }));
     await store.updateItem(tag, created.id, validItem({ title: "v3" }));
 
-    const updates = (await historyStore.list({ itemId: created.id })).filter((e) => e.op === "update");
+    const updates = (await historyStore.list(tag, { itemId: created.id })).filter((e) => e.op === "update");
     const firstUpdate = updates.at(-1); // oldest update = v1 -> v2
 
     const restored = await store.restoreFromHistory(tag, firstUpdate.id);
@@ -182,7 +180,7 @@ describe("importItems", () => {
       validItem({ title: "brand new" }),
     ]);
 
-    const allEvents = await historyStore.list();
+    const allEvents = await historyStore.list(tag);
     expect(allEvents.filter((e) => e.op === "update")).toHaveLength(1);
     expect(allEvents.filter((e) => e.op === "create")).toHaveLength(2); // original add + import add
   });
