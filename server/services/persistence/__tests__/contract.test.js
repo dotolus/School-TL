@@ -225,5 +225,14 @@ describe("firestoreAdapter (persistence contract)", () => {
       expect(await adapter.getBackup("2027-01-01", otherTag)).toBeNull();
       expect(await adapter.listBackups(otherTag)).toEqual([]);
     });
+
+    it("two datasets backing up on the same date don't overwrite each other", async () => {
+      const otherTag = { ...tag, school: `other-${crypto.randomUUID()}` };
+      await adapter.createBackup(makeBackup({ itemCount: 1 }), tag);
+      await adapter.createBackup(makeBackup({ itemCount: 2 }), otherTag);
+
+      expect((await adapter.getBackup("2027-01-01", tag)).itemCount).toBe(1);
+      expect((await adapter.getBackup("2027-01-01", otherTag)).itemCount).toBe(2);
+    });
   });
 });

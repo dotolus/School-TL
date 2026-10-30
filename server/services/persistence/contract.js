@@ -66,8 +66,9 @@
 //   listHistory(tag, { itemId, limit }) -> Promise<HistoryEntry[]>  // newest first
 //   getHistoryEntry(id, tag) -> Promise<HistoryEntry|null>
 //   createBackup(record: BackupRecord, tag) -> Promise<void>
-//     Upsert by record.id (an ISO date) - a second backup the same day
-//     overwrites the first.
+//     Upsert by record.id (an ISO date) scoped to tag - a second backup for
+//     the SAME dataset on the same day overwrites the first; two different
+//     datasets backing up on the same date are independent documents.
 //   listBackups(tag) -> Promise<Array<{id, createdAt, itemCount}>>
 //     Metadata only (no items/themes) - newest first.
 //   getBackup(id, tag) -> Promise<BackupRecord|null>
