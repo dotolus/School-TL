@@ -9,8 +9,10 @@ export function App() {
     <ThemeProvider>
       <AttachmentViewerProvider>
         <Routes>
-          <Route path="/" element={<ViewerPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/:school/:period/:class">
+            <Route index element={<ViewerPage />} />
+            <Route path="admin" element={<AdminPage />} />
+          </Route>
         </Routes>
       </AttachmentViewerProvider>
     </ThemeProvider>
