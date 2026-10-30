@@ -1,12 +1,7 @@
 const crypto = require("crypto");
 const { getRepository } = require("./persistence");
-const { ACTIVE_SCHOOL, ACTIVE_CLASS, ACTIVE_PERIOD } = require("../config");
 
 const VALID_TYPES = new Set(["holiday", "test", "notice", "project"]);
-
-function activeDatasetFilter() {
-  return { school: ACTIVE_SCHOOL, class: ACTIVE_CLASS, period: ACTIVE_PERIOD };
-}
 
 function validateItemInput(input) {
   if (!input || typeof input !== "object") {
@@ -106,10 +101,10 @@ function makeHistoryEntry(partial) {
   return { id: crypto.randomUUID(), ts: new Date().toISOString(), ...partial };
 }
 
-async function getAll() {
-  const { school, class: cls, period } = activeDatasetFilter();
+async function getAll(tag) {
+  const { school, class: cls, period } = tag;
   try {
-    const records = await getRepository().getActiveEvents(activeDatasetFilter());
+    const records = await getRepository().getActiveEvents(tag);
     return records.map(toExternalItem);
   } catch (err) {
     console.error(`[timelineStore] Failed to fetch items for ${school}/${cls}/${period}:`, err.message);
@@ -117,9 +112,9 @@ async function getAll() {
   }
 }
 
-async function getItem(id) {
+async function getItem(tag, id) {
   try {
-    const record = await getRepository().getEvent(id, activeDatasetFilter());
+    const record = await getRepository().getEvent(id, tag);
     return toExternalItem(record);
   } catch (err) {
     console.error(`[timelineStore] Failed to fetch item ${id}:`, err.message);
@@ -127,10 +122,9 @@ async function getItem(id) {
   }
 }
 
-async function addItem(input) {
+async function addItem(tag, input) {
   try {
     validateItemInput(input);
-    const tag = activeDatasetFilter();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const record = {
@@ -152,10 +146,9 @@ async function addItem(input) {
   }
 }
 
-async function updateItem(id, input) {
+async function updateItem(tag, id, input) {
   try {
     validateItemInput(input);
-    const tag = activeDatasetFilter();
     let after = null;
     const ok = await getRepository().updateActiveEvent(id, tag, (existing) => {
       const before = toExternalItem(existing);
@@ -175,9 +168,8 @@ async function updateItem(id, input) {
   }
 }
 
-async function deleteItem(id) {
+async function deleteItem(tag, id) {
   try {
-    const tag = activeDatasetFilter();
     let before = null;
     const ok = await getRepository().updateActiveEvent(id, tag, (existing) => {
       before = toExternalItem(existing);
@@ -196,7 +188,7 @@ async function deleteItem(id) {
   }
 }
 
-async function importItems(inputItems) {
+async function importItems(tag, inputItems) {
   if (!Array.isArray(inputItems)) {
     throw new Error("items must be an array");
   }
@@ -224,13 +216,13 @@ async function importItems(inputItems) {
   // app's scale/demo-data status - flagged here rather than silently assumed.
   for (const input of inputItems) {
     if (input.id) {
-      const updated = await updateItem(input.id, input);
+      const updated = await updateItem(tag, input.id, input);
       if (updated) {
         result.updated += 1;
         continue;
       }
     }
-    await addItem(input);
+    await addItem(tag, input);
     result.created += 1;
   }
 
@@ -238,9 +230,8 @@ async function importItems(inputItems) {
   return result;
 }
 
-async function restoreFromHistory(eventId) {
+async function restoreFromHistory(tag, eventId) {
   try {
-    const tag = activeDatasetFilter();
     let restored = null;
     const ok = await getRepository().restoreEvent(eventId, tag, (entry, eventRecord) => {
       // Structurally unreachable via any real app code path (events are
@@ -354,11 +345,10 @@ function sanitizeBackupItem(raw) {
 // the backup was taken but doesn't anymore is restored, and one created
 // since the backup - absent from it - is soft-deleted, the same as a normal
 // deleteItem so it stays individually undo-able from history).
-async function restoreAllFromBackup(backupItems) {
+async function restoreAllFromBackup(tag, backupItems) {
   if (!Array.isArray(backupItems)) {
     throw new Error("backup items must be an array");
   }
-  const tag = activeDatasetFilter();
   const now = new Date().toISOString();
   const restored = [];
   const skipped = [];
