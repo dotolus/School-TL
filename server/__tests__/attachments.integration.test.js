@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { createTestApp, cleanupTestApp } = require("./testApp");
+const { createTestApp, cleanupTestApp, datasetPath } = require("./testApp");
 
 const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUAAScy0lUAAAAASUVORK5CYII=",
@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 async function createItem() {
-  const res = await agent.post("/api/timeline/items").send({
+  const res = await agent.post(datasetPath("/timeline/items")).send({
     type: "notice",
     m: 1,
     y: 2027,
@@ -38,7 +38,7 @@ describe("item attachments", () => {
     const id = await createItem();
 
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", TINY_PNG, "test.png");
     expect(res.status).toBe(201);
     expect(res.body.detail.attachments).toHaveLength(1);
@@ -52,7 +52,7 @@ describe("item attachments", () => {
   it("uploads a PDF with kind \"pdf\"", async () => {
     const id = await createItem();
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("%PDF-1.4 fake"), { filename: "doc.pdf", contentType: "application/pdf" });
     expect(res.status).toBe(201);
     expect(res.body.detail.attachments[0].kind).toBe("pdf");
@@ -61,7 +61,7 @@ describe("item attachments", () => {
   it("preserves a non-ASCII (Hebrew) filename instead of mojibake", async () => {
     const id = await createItem();
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("%PDF-1.4 fake"), { filename: "מבחן.pdf", contentType: "application/pdf" });
     expect(res.status).toBe(201);
     expect(res.body.detail.attachments[0].filename).toBe("מבחן.pdf");
@@ -70,7 +70,7 @@ describe("item attachments", () => {
   it("uploads a text file with kind \"text\"", async () => {
     const id = await createItem();
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("hello"), { filename: "notes.txt", contentType: "text/plain" });
     expect(res.status).toBe(201);
     expect(res.body.detail.attachments[0].kind).toBe("text");
@@ -79,7 +79,7 @@ describe("item attachments", () => {
   it("uploads a zip file with kind \"zip\"", async () => {
     const id = await createItem();
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("PK\x03\x04fake"), { filename: "archive.zip", contentType: "application/zip" });
     expect(res.status).toBe(201);
     expect(res.body.detail.attachments[0].kind).toBe("zip");
@@ -88,7 +88,7 @@ describe("item attachments", () => {
   it("rejects a disallowed file type", async () => {
     const id = await createItem();
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("binary"), { filename: "test.bin", contentType: "application/octet-stream" });
     expect(res.status).toBe(400);
   });
@@ -97,14 +97,14 @@ describe("item attachments", () => {
     const id = await createItem();
     const tooBig = Buffer.alloc(21 * 1024 * 1024);
     const res = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", tooBig, { filename: "big.png", contentType: "image/png" });
     expect(res.status).toBe(400);
   });
 
   it("404s uploading to a nonexistent item", async () => {
     const res = await agent
-      .post("/api/timeline/items/does-not-exist/attachments")
+      .post(datasetPath("/timeline/items/does-not-exist/attachments"))
       .attach("file", TINY_PNG, "test.png");
     expect(res.status).toBe(404);
   });
@@ -112,7 +112,7 @@ describe("item attachments", () => {
   it("requires auth", async () => {
     const id = await createItem();
     const res = await request(app)
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", TINY_PNG, "test.png");
     expect(res.status).toBe(401);
   });
@@ -120,11 +120,11 @@ describe("item attachments", () => {
   it("deleting a reference drops it from the item", async () => {
     const id = await createItem();
     const upload = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", TINY_PNG, "test.png");
     const attachment = upload.body.detail.attachments[0];
 
-    const del = await agent.delete(`/api/timeline/items/${id}/attachments/${attachment.id}`);
+    const del = await agent.delete(datasetPath(`/timeline/items/${id}/attachments/${attachment.id}`));
     expect(del.status).toBe(200);
     expect(del.body.detail.attachments).toEqual([]);
   });
@@ -132,11 +132,11 @@ describe("item attachments", () => {
   it("deleting a non-image attachment drops it from the item", async () => {
     const id = await createItem();
     const upload = await agent
-      .post(`/api/timeline/items/${id}/attachments`)
+      .post(datasetPath(`/timeline/items/${id}/attachments`))
       .attach("file", Buffer.from("hello"), { filename: "notes.txt", contentType: "text/plain" });
     const attachment = upload.body.detail.attachments[0];
 
-    const del = await agent.delete(`/api/timeline/items/${id}/attachments/${attachment.id}`);
+    const del = await agent.delete(datasetPath(`/timeline/items/${id}/attachments/${attachment.id}`));
     expect(del.status).toBe(200);
     expect(del.body.detail.attachments).toEqual([]);
   });

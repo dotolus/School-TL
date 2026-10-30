@@ -59,4 +59,8 @@ function cleanupTestApp(tmpDir) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-module.exports = { createTestApp, cleanupTestApp, clearServerModuleCache };
+function datasetPath(suffix) {
+  return `/api/${process.env.ACTIVE_SCHOOL}/2026-2027/e4${suffix}`;
+}
+
+module.exports = { createTestApp, cleanupTestApp, clearServerModuleCache, datasetPath };

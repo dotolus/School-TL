@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { createTestApp, cleanupTestApp } = require("./testApp");
+const { createTestApp, cleanupTestApp, datasetPath } = require("./testApp");
 
 let app, tmpDir, agent;
 
@@ -13,9 +13,9 @@ afterEach(() => {
   cleanupTestApp(tmpDir);
 });
 
-describe("GET /api/events", () => {
+describe("GET /api/:school/:period/:class/events", () => {
   it("is public and returns the decoupled public shape", async () => {
-    await agent.post("/api/timeline/items").send({
+    await agent.post(datasetPath("/timeline/items")).send({
       type: "test",
       m: 3,
       y: 2027,
@@ -27,7 +27,7 @@ describe("GET /api/events", () => {
       "required-parent-signature": true,
     });
 
-    const res = await request(app).get("/api/events");
+    const res = await request(app).get(datasetPath("/events"));
     expect(res.status).toBe(200);
     expect(res.body.events).toHaveLength(1);
     const event = res.body.events[0];
