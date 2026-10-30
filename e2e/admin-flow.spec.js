@@ -15,6 +15,6 @@ test("logging in, adding an item, and seeing it on the public timeline", async (
   await addItemViaAdmin(page, { title: "בדיקת E2E", short: "5.5", full: "5.5.2027", m: "5", y: "2027" });
   await expect(page.getByText("בדיקת E2E")).toBeVisible(); // shows in the admin item list
 
-  await page.goto("/");
+  await page.goto("/reut/2026-2027/e4");
   await expect(page.getByText("בדיקת E2E")).toBeVisible(); // and on the public viewer
 });

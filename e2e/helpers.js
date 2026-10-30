@@ -1,5 +1,5 @@
 async function login(page, password = "e2e-test-password") {
-  await page.goto("/admin");
+  await page.goto("/reut/2026-2027/e4/admin");
   await page.getByLabel("סיסמה").fill(password);
   await page.getByRole("button", { name: "התחברות" }).click();
 }
