@@ -12,17 +12,17 @@ function clearServerModuleCache() {
 
 let store;
 let historyStore;
+let tag;
 
 beforeEach(() => {
   applyEmulatorEnv();
-  process.env.ACTIVE_SCHOOL = `test-${crypto.randomUUID()}`;
+  tag = { school: `test-${crypto.randomUUID()}`, class: "e4", period: "2026-2027" };
   clearServerModuleCache();
   store = require("../timelineStore");
   historyStore = require("../historyStore");
 });
 
 afterEach(() => {
-  delete process.env.ACTIVE_SCHOOL;
   delete process.env.FIRESTORE_EMULATOR_HOST;
   delete process.env.FIREBASE_PROJECT_ID;
 });
@@ -85,143 +85,139 @@ describe("validateItemInput", () => {
 
 describe("timelineStore CRUD + history integration", () => {
   it("addItem/updateItem/deleteItem round-trip", async () => {
-    const created = await store.addItem(validItem({ title: "v1" }));
+    const created = await store.addItem(tag, validItem({ title: "v1" }));
     expect(created.id).toBeTruthy();
-    expect(await store.getAll()).toHaveLength(1);
+    expect(await store.getAll(tag)).toHaveLength(1);
 
-    const updated = await store.updateItem(created.id, validItem({ title: "v2" }));
+    const updated = await store.updateItem(tag, created.id, validItem({ title: "v2" }));
     expect(updated.title).toBe("v2");
 
-    expect(await store.deleteItem(created.id)).toBe(true);
-    expect(await store.getAll()).toHaveLength(0);
-    expect(await store.deleteItem(created.id)).toBe(false);
+    expect(await store.deleteItem(tag, created.id)).toBe(true);
+    expect(await store.getAll(tag)).toHaveLength(0);
+    expect(await store.deleteItem(tag, created.id)).toBe(false);
   });
 
   it("persists detail.generalInfo and required-parent-signature through addItem/getItem", async () => {
     const created = await store.addItem(
+      tag,
       validItem({ detail: { generalInfo: "bring a snack" }, "required-parent-signature": true })
     );
     expect(created.detail.generalInfo).toBe("bring a snack");
     expect(created["required-parent-signature"]).toBe(true);
 
-    const fetched = await store.getItem(created.id);
+    const fetched = await store.getItem(tag, created.id);
     expect(fetched.detail.generalInfo).toBe("bring a snack");
     expect(fetched["required-parent-signature"]).toBe(true);
   });
 
   it("a soft-deleted item disappears from getAll/getItem but its document survives for history", async () => {
-    const created = await store.addItem(validItem({ title: "to delete" }));
-    await store.deleteItem(created.id);
+    const created = await store.addItem(tag, validItem({ title: "to delete" }));
+    await store.deleteItem(tag, created.id);
 
-    expect(await store.getItem(created.id)).toBeNull();
-    expect(await store.getAll()).toEqual([]);
+    expect(await store.getItem(tag, created.id)).toBeNull();
+    expect(await store.getAll(tag)).toEqual([]);
 
-    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
+    const deleteEntry = (await historyStore.list(tag, { itemId: created.id })).find((e) => e.op === "delete");
     expect(deleteEntry).toBeTruthy();
     expect(deleteEntry.before.title).toBe("to delete");
   });
 
   it("restoreFromHistory undeletes using the delete entry's before-snapshot", async () => {
-    const created = await store.addItem(validItem({ title: "to delete" }));
-    await store.deleteItem(created.id);
-    expect(await store.getItem(created.id)).toBeNull();
+    const created = await store.addItem(tag, validItem({ title: "to delete" }));
+    await store.deleteItem(tag, created.id);
+    expect(await store.getItem(tag, created.id)).toBeNull();
 
-    const deleteEntry = (await historyStore.list({ itemId: created.id })).find((e) => e.op === "delete");
-    const restored = await store.restoreFromHistory(deleteEntry.id);
+    const deleteEntry = (await historyStore.list(tag, { itemId: created.id })).find((e) => e.op === "delete");
+    const restored = await store.restoreFromHistory(tag, deleteEntry.id);
     expect(restored.title).toBe("to delete");
-    expect(await store.getItem(created.id)).not.toBeNull();
+    expect(await store.getItem(tag, created.id)).not.toBeNull();
   });
 
   it("restoreFromHistory reverts properties using an update entry's after-snapshot", async () => {
-    const created = await store.addItem(validItem({ title: "v1" }));
-    await store.updateItem(created.id, validItem({ title: "v2" }));
-    await store.updateItem(created.id, validItem({ title: "v3" }));
+    const created = await store.addItem(tag, validItem({ title: "v1" }));
+    await store.updateItem(tag, created.id, validItem({ title: "v2" }));
+    await store.updateItem(tag, created.id, validItem({ title: "v3" }));
 
-    const updates = (await historyStore.list({ itemId: created.id })).filter((e) => e.op === "update");
+    const updates = (await historyStore.list(tag, { itemId: created.id })).filter((e) => e.op === "update");
     const firstUpdate = updates.at(-1); // oldest update = v1 -> v2
 
-    const restored = await store.restoreFromHistory(firstUpdate.id);
+    const restored = await store.restoreFromHistory(tag, firstUpdate.id);
     expect(restored.title).toBe("v2");
-    expect((await store.getItem(created.id)).title).toBe("v2");
+    expect((await store.getItem(tag, created.id)).title).toBe("v2");
   });
 
   it("restoreFromHistory returns null for an unknown event id", async () => {
-    expect(await store.restoreFromHistory("does-not-exist")).toBeNull();
+    expect(await store.restoreFromHistory(tag, "does-not-exist")).toBeNull();
   });
 });
 
 describe("dataset scoping", () => {
   it("only surfaces items tagged with the active school/class/period", async () => {
-    await store.addItem(validItem({ title: "in dataset A" }));
-
-    process.env.ACTIVE_SCHOOL = "otherschool";
-    clearServerModuleCache();
-    const otherStore = require("../timelineStore");
-    expect(await otherStore.getAll()).toEqual([]);
-
-    delete process.env.ACTIVE_SCHOOL;
+    await store.addItem(tag, validItem({ title: "in dataset A" }));
+    const otherTag = { ...tag, school: "otherschool" };
+    expect(await store.getAll(otherTag)).toEqual([]);
   });
 });
 
 describe("importItems", () => {
   it("creates items that have no matching id and updates ones that do", async () => {
-    const existing = await store.addItem(validItem({ title: "original" }));
+    const existing = await store.addItem(tag, validItem({ title: "original" }));
 
-    const result = await store.importItems([
+    const result = await store.importItems(tag, [
       { ...validItem({ title: "replaced" }), id: existing.id },
       validItem({ title: "brand new" }),
     ]);
 
     expect(result).toEqual({ created: 1, updated: 1 });
-    expect(await store.getAll()).toHaveLength(2);
-    expect((await store.getItem(existing.id)).title).toBe("replaced");
+    expect(await store.getAll(tag)).toHaveLength(2);
+    expect((await store.getItem(tag, existing.id)).title).toBe("replaced");
   });
 
   it("logs a history entry per imported item", async () => {
-    const existing = await store.addItem(validItem({ title: "original" }));
-    await store.importItems([
+    const existing = await store.addItem(tag, validItem({ title: "original" }));
+    await store.importItems(tag, [
       { ...validItem({ title: "replaced" }), id: existing.id },
       validItem({ title: "brand new" }),
     ]);
 
-    const allEvents = await historyStore.list();
+    const allEvents = await historyStore.list(tag);
     expect(allEvents.filter((e) => e.op === "update")).toHaveLength(1);
     expect(allEvents.filter((e) => e.op === "create")).toHaveLength(2); // original add + import add
   });
 
   it("is all-or-nothing on validation: a single invalid item aborts before any write", async () => {
-    await expect(store.importItems([validItem(), validItem({ type: "bogus" })])).rejects.toThrow(
+    await expect(store.importItems(tag, [validItem(), validItem({ type: "bogus" })])).rejects.toThrow(
       /Import validation failed/
     );
-    expect(await store.getAll()).toHaveLength(0);
+    expect(await store.getAll(tag)).toHaveLength(0);
   });
 
   it("rejects a non-array payload", async () => {
-    await expect(store.importItems({ not: "an array" })).rejects.toThrow(/items must be an array/);
+    await expect(store.importItems(tag, { not: "an array" })).rejects.toThrow(/items must be an array/);
   });
 });
 
 describe("restoreAllFromBackup", () => {
   it("recreates items from a backup snapshot and prunes active items missing from it", async () => {
-    const a = await store.addItem(validItem({ title: "A" }));
-    await store.addItem(validItem({ title: "B" })); // absent from the backup below
+    const a = await store.addItem(tag, validItem({ title: "A" }));
+    await store.addItem(tag, validItem({ title: "B" })); // absent from the backup below
 
-    const result = await store.restoreAllFromBackup([{ ...a, title: "A restored" }]);
+    const result = await store.restoreAllFromBackup(tag, [{ ...a, title: "A restored" }]);
     expect(result.restored.map((i) => i.title)).toEqual(["A restored"]);
     expect(result.skipped).toEqual([]);
 
-    const active = await store.getAll();
+    const active = await store.getAll(tag);
     expect(active.map((i) => i.title)).toEqual(["A restored"]);
   });
 
   it("restoring an empty backup soft-deletes every currently active item", async () => {
-    await store.addItem(validItem());
-    await store.restoreAllFromBackup([]);
-    expect(await store.getAll()).toEqual([]);
+    await store.addItem(tag, validItem());
+    await store.restoreAllFromBackup(tag, []);
+    expect(await store.getAll(tag)).toEqual([]);
   });
 
   it("best-effort: defaults a malformed item's fields instead of failing the whole restore", async () => {
-    const result = await store.restoreAllFromBackup([
+    const result = await store.restoreAllFromBackup(tag, [
       { id: "broken-1", type: "not-a-type", m: 99, y: "nope", title: "", short: "ok", full: "ok" },
     ]);
     expect(result.restored).toHaveLength(1);
@@ -232,26 +228,26 @@ describe("restoreAllFromBackup", () => {
     expect(item.title).toBe("");
     expect([...item.recoveryIssues].sort()).toEqual(["m", "title", "type", "y"]);
 
-    const stored = await store.getItem(item.id);
+    const stored = await store.getItem(tag, item.id);
     expect(stored.recoveryIssues).toEqual(item.recoveryIssues);
   });
 
   it("recoveryIssues is cleared once the item is normally re-saved", async () => {
-    const [restored] = (await store.restoreAllFromBackup([{ id: "broken-2", title: "" }])).restored;
+    const [restored] = (await store.restoreAllFromBackup(tag, [{ id: "broken-2", title: "" }])).restored;
     expect(restored.recoveryIssues.length).toBeGreaterThan(0);
 
-    const updated = await store.updateItem(restored.id, validItem({ title: "Fixed" }));
+    const updated = await store.updateItem(tag, restored.id, validItem({ title: "Fixed" }));
     expect(updated.recoveryIssues).toEqual([]);
   });
 
   it("rejects a non-array payload", async () => {
-    await expect(store.restoreAllFromBackup({ not: "an array" })).rejects.toThrow(
+    await expect(store.restoreAllFromBackup(tag, { not: "an array" })).rejects.toThrow(
       /backup items must be an array/
     );
   });
 
   it("defaults a non-array detail.attachments to an empty array", async () => {
-    const result = await store.restoreAllFromBackup([
+    const result = await store.restoreAllFromBackup(tag, [
       { ...validItem({ title: "C" }), id: "broken-3", detail: { attachments: "nope" } },
     ]);
     expect(result.restored).toHaveLength(1);

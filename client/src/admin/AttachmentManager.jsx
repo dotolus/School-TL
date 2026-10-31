@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { api } from "../api";
+import { useDatasetApi } from "../useDatasetApi";
 
 const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
 
 export function AttachmentManager({ itemId, initialAttachments, onChange }) {
+  const api = useDatasetApi();
   const [attachments, setAttachments] = useState(initialAttachments || []);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);

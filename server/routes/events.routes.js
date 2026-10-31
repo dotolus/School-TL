@@ -9,7 +9,7 @@ const router = express.Router();
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    const items = await store.getAll();
+    const items = await store.getAll(req.datasetTag);
     res.json({ events: items.map(toPublicEvent) });
   })
 );

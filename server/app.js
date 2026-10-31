@@ -9,6 +9,8 @@ const authRoutes = require("./routes/auth.routes");
 const historyRoutes = require("./routes/history.routes");
 const eventsRoutes = require("./routes/events.routes");
 const backupRoutes = require("./routes/backup.routes");
+const backupCronRoutes = require("./routes/backupCron.routes");
+const { attachDatasetTag } = require("./middleware/datasetTag");
 
 const app = express();
 
@@ -22,12 +24,14 @@ app.use(
   })
 );
 
-app.use("/api/timeline", timelineRoutes);
 app.use("/api/themes", themesRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/history", historyRoutes);
-app.use("/api/events", eventsRoutes);
-app.use("/api/backup", backupRoutes);
+app.use("/api/backup", backupCronRoutes);
+
+app.use("/api/:school/:period/:class/timeline", attachDatasetTag, timelineRoutes);
+app.use("/api/:school/:period/:class/history", attachDatasetTag, historyRoutes);
+app.use("/api/:school/:period/:class/events", attachDatasetTag, eventsRoutes);
+app.use("/api/:school/:period/:class/backup", attachDatasetTag, backupRoutes);
 
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST));

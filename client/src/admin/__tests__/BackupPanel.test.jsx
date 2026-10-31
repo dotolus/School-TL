@@ -3,19 +3,17 @@ import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import { BackupPanel } from "../BackupPanel";
-import { api } from "../../api";
 
-vi.mock("../../api", () => ({
-  api: { getBackups: vi.fn(), createBackup: vi.fn(), restoreBackup: vi.fn() },
-}));
+const mockApi = vi.hoisted(() => ({ getBackups: vi.fn(), createBackup: vi.fn(), restoreBackup: vi.fn() }));
+vi.mock("../../useDatasetApi", () => ({ useDatasetApi: () => mockApi }));
 
 describe("BackupPanel", () => {
   beforeEach(() => {
-    api.getBackups.mockResolvedValue({ backups: [] });
+    mockApi.getBackups.mockResolvedValue({ backups: [] });
   });
 
   it("lists existing backups", async () => {
-    api.getBackups.mockResolvedValue({
+    mockApi.getBackups.mockResolvedValue({
       backups: [{ id: "2026-10-23", createdAt: "2026-10-23T06:00:00.000Z", itemCount: 12 }],
     });
 
@@ -26,22 +24,22 @@ describe("BackupPanel", () => {
   });
 
   it("creates a new backup and reloads the list", async () => {
-    api.createBackup.mockResolvedValue({ id: "2026-10-23", createdAt: "x", itemCount: 1 });
+    mockApi.createBackup.mockResolvedValue({ id: "2026-10-23", createdAt: "x", itemCount: 1 });
 
     render(<BackupPanel />);
-    await waitFor(() => expect(api.getBackups).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockApi.getBackups).toHaveBeenCalledTimes(1));
 
     fireEvent.click(screen.getByText("גיבוי עכשיו"));
 
-    await waitFor(() => expect(api.createBackup).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(api.getBackups).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockApi.createBackup).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockApi.getBackups).toHaveBeenCalledTimes(2));
   });
 
   it("restores a backup, shows a summary, and notifies the parent", async () => {
-    api.getBackups.mockResolvedValue({
+    mockApi.getBackups.mockResolvedValue({
       backups: [{ id: "2026-10-23", createdAt: "2026-10-23T06:00:00.000Z", itemCount: 3 }],
     });
-    api.restoreBackup.mockResolvedValue({
+    mockApi.restoreBackup.mockResolvedValue({
       id: "2026-10-23",
       restored: [{ id: "a" }, { id: "b" }],
       skipped: [{ id: "c", error: "boom" }],
@@ -53,17 +51,17 @@ describe("BackupPanel", () => {
 
     fireEvent.click(screen.getByText("שחזור (מחליף את כל הנתונים הנוכחיים)"));
 
-    await waitFor(() => expect(api.restoreBackup).toHaveBeenCalledWith("2026-10-23"));
+    await waitFor(() => expect(mockApi.restoreBackup).toHaveBeenCalledWith("2026-10-23"));
     await waitFor(() => expect(onRestored).toHaveBeenCalledTimes(1));
     expect(screen.getByText(/2 פריטים שוחזרו/)).toBeInTheDocument();
     expect(screen.getByText(/1 פריטים לא ניתן היה לשחזר/)).toBeInTheDocument();
   });
 
   it("shows an error if creating a backup fails", async () => {
-    api.createBackup.mockRejectedValue(new Error("Backup failed"));
+    mockApi.createBackup.mockRejectedValue(new Error("Backup failed"));
 
     render(<BackupPanel />);
-    await waitFor(() => expect(api.getBackups).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockApi.getBackups).toHaveBeenCalledTimes(1));
 
     fireEvent.click(screen.getByText("גיבוי עכשיו"));
 

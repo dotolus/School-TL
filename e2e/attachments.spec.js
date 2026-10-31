@@ -17,7 +17,7 @@ test("uploading an image and opening/zooming/closing it in the viewer's attachme
   await page.getByRole("button", { name: "העלאה", exact: true }).click();
   await expect(page.locator(".image-thumb img")).toBeVisible();
 
-  await page.goto("/");
+  await page.goto("/reut/2026-2027/e4");
   await page.getByText(title).click(); // opens the <details> card
 
   await page.locator(".image-thumb").click();
@@ -46,7 +46,7 @@ test("uploading a text file and previewing it (download-only chrome, no zoom)", 
   await page.getByRole("button", { name: "העלאה", exact: true }).click();
   await expect(page.locator(".attachment-thumb")).toContainText("test.txt");
 
-  await page.goto("/");
+  await page.goto("/reut/2026-2027/e4");
   await page.getByText(title).click(); // opens the <details> card
 
   await page.getByText("תצוגה מקדימה").click();

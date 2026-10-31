@@ -64,22 +64,22 @@ const validItem = (overrides = {}) => ({
 
 describe("backupStore.createBackup/getBackup/listBackups", () => {
   it("snapshots all active items and the active theme", async () => {
-    await store.addItem(validItem({ title: "A" }));
-    await store.addItem(validItem({ title: "B" }));
+    await store.addItem(tag, validItem({ title: "A" }));
+    await store.addItem(tag, validItem({ title: "B" }));
     themeStore.setActive("dark");
 
-    const backup = await backupStore.createBackup();
+    const backup = await backupStore.createBackup(tag);
     expect(backup.itemCount).toBe(2);
     expect(backup.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-    const full = await backupStore.getBackup(backup.id);
+    const full = await backupStore.getBackup(tag, backup.id);
     expect(full.items.map((i) => i.title).sort()).toEqual(["A", "B"]);
     expect(full.themes.activeThemeId).toBe("dark");
   });
 
   it("listBackups returns metadata only, newest first", async () => {
-    await store.addItem(validItem());
-    const today = await backupStore.createBackup();
+    await store.addItem(tag, validItem());
+    const today = await backupStore.createBackup(tag);
 
     const { getRepository } = require("../persistence");
     await getRepository().createBackup(
@@ -88,7 +88,7 @@ describe("backupStore.createBackup/getBackup/listBackups", () => {
     );
 
     const list = await waitFor(async () => {
-      const result = await backupStore.listBackups();
+      const result = await backupStore.listBackups(tag);
       return result.length >= 2 ? result : null;
     });
     expect(list.map((b) => b.id)).toEqual([today.id, "2020-01-01"]);
@@ -101,27 +101,27 @@ describe("backupStore.runScheduledBackupIfDue", () => {
     const result = await backupStore.runScheduledBackupIfDue();
     expect(result).not.toBeNull();
     const list = await waitFor(async () => {
-      const r = await backupStore.listBackups();
+      const r = await backupStore.listBackups(tag);
       return r.length >= 1 ? r : null;
     });
     expect(list).toHaveLength(1);
   });
 
   it("skips when the last backup is within the minimum interval", async () => {
-    await backupStore.createBackup();
+    await backupStore.createBackup(tag);
     // Confirm the backup is query-visible first - runScheduledBackupIfDue
     // itself does a listBackups() to find "last", so without this the same
     // emulator lag this file's other tests guard against could make it see
     // no backups yet and create a second one, which would also make this
     // assertion fail (for the opposite reason than a real bug would).
     await waitFor(async () => {
-      const r = await backupStore.listBackups();
+      const r = await backupStore.listBackups(tag);
       return r.length >= 1 ? r : null;
     });
 
     const result = await backupStore.runScheduledBackupIfDue();
     expect(result).toBeNull();
-    expect(await backupStore.listBackups()).toHaveLength(1);
+    expect(await backupStore.listBackups(tag)).toHaveLength(1);
   });
 
   it("backs up again once the minimum interval has passed", async () => {
@@ -135,7 +135,7 @@ describe("backupStore.runScheduledBackupIfDue", () => {
     const result = await backupStore.runScheduledBackupIfDue();
     expect(result).not.toBeNull();
     const list = await waitFor(async () => {
-      const r = await backupStore.listBackups();
+      const r = await backupStore.listBackups(tag);
       return r.length >= 2 ? r : null;
     });
     expect(list).toHaveLength(2);
@@ -144,22 +144,22 @@ describe("backupStore.runScheduledBackupIfDue", () => {
 
 describe("backupStore.restoreBackup", () => {
   it("restores items and the active theme, best-effort if the theme no longer exists", async () => {
-    await store.addItem(validItem({ title: "A" }));
+    await store.addItem(tag, validItem({ title: "A" }));
     themeStore.setActive("dark");
-    const backup = await backupStore.createBackup();
+    const backup = await backupStore.createBackup(tag);
 
     themeStore.setActive("paper");
-    await store.addItem(validItem({ title: "C" })); // created after the backup - should be pruned
+    await store.addItem(tag, validItem({ title: "C" })); // created after the backup - should be pruned
 
-    const result = await backupStore.restoreBackup(backup.id);
+    const result = await backupStore.restoreBackup(tag, backup.id);
     expect(result.themeRestored).toBe(true);
     expect(themeStore.getAll().activeThemeId).toBe("dark");
 
-    const items = await store.getAll();
+    const items = await store.getAll(tag);
     expect(items.map((i) => i.title)).toEqual(["A"]);
   });
 
   it("returns null for an unknown backup id", async () => {
-    expect(await backupStore.restoreBackup("does-not-exist")).toBeNull();
+    expect(await backupStore.restoreBackup(tag, "does-not-exist")).toBeNull();
   });
 });

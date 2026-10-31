@@ -171,9 +171,19 @@ async function getHistoryEntry(id, tag) {
   return { id: doc.id, ...omit(data, ["school", "class", "period"]) };
 }
 
+// The backup record's own `id` is just a calendar date ("2027-01-01") -
+// unique per dataset, not globally. The Firestore document id has to be
+// unique *across* datasets too, or two datasets backing up on the same date
+// would silently overwrite each other's document (`.doc(id).set()` fully
+// replaces whatever was there). Composing the doc id from the tag plus the
+// date keeps them separate while the public `id` field stays just the date,
+// so the API/UI shape is unaffected.
+function backupDocId(tag, id) {
+  return `${tag.school}__${tag.class}__${tag.period}__${id}`;
+}
+
 async function createBackup(record, tag) {
-  const { id, ...fields } = record;
-  await backupsCol().doc(id).set({ ...tag, ...fields });
+  await backupsCol().doc(backupDocId(tag, record.id)).set({ ...tag, ...record });
 }
 
 async function listBackups(tag) {
@@ -184,7 +194,7 @@ async function listBackups(tag) {
     .get();
   const entries = snap.docs.map((doc) => {
     const data = doc.data();
-    return { id: doc.id, createdAt: data.createdAt, itemCount: data.itemCount };
+    return { id: data.id, createdAt: data.createdAt, itemCount: data.itemCount };
   });
   // Sorted in app code rather than via Firestore orderBy, same rationale as
   // listHistory - avoids needing a composite index.
@@ -193,11 +203,11 @@ async function listBackups(tag) {
 }
 
 async function getBackup(id, tag) {
-  const doc = await backupsCol().doc(id).get();
+  const doc = await backupsCol().doc(backupDocId(tag, id)).get();
   if (!doc.exists) return null;
   const data = doc.data();
   if (!matchesTag(data, tag)) return null;
-  return { id: doc.id, ...omit(data, ["school", "class", "period"]) };
+  return { id: data.id, ...omit(data, ["school", "class", "period", "id"]) };
 }
 
 module.exports = {

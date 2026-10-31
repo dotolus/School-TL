@@ -27,6 +27,10 @@ module.exports = [
       "playwright-report/**",
       "test-results/**",
       "e2e/fixtures/**",
+      // Tool-installed skill packages/working files (see .claude/plugins
+      // skills CLI), not part of this project's own source.
+      ".agents/**",
+      ".hallmark/**",
     ],
   },
 

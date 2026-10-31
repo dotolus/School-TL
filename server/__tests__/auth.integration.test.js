@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { createTestApp, cleanupTestApp } = require("./testApp");
+const { createTestApp, cleanupTestApp, datasetPath } = require("./testApp");
 
 let app, tmpDir;
 
@@ -13,7 +13,7 @@ afterEach(() => {
 
 describe("auth", () => {
   it("rejects a mutating route with no session", async () => {
-    const res = await request(app).post("/api/timeline/items").send({});
+    const res = await request(app).post(datasetPath("/timeline/items")).send({});
     expect(res.status).toBe(401);
   });
 
@@ -46,7 +46,7 @@ describe("auth", () => {
     await agent.post("/api/auth/login").send({ password: "test-password" });
 
     const res = await agent
-      .post("/api/timeline/items")
+      .post(datasetPath("/timeline/items"))
       .send({ type: "notice", m: 1, y: 2027, title: "t", short: "1.1", full: "1.1.2027" });
     expect(res.status).toBe(201);
   });

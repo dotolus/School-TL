@@ -73,7 +73,7 @@ function uploadImportFile(req, res, next) {
 router.get(
   "/",
   asyncHandler(async (req, res) => {
-    res.json({ items: await store.getAll() });
+    res.json({ items: await store.getAll(req.datasetTag) });
   })
 );
 
@@ -99,7 +99,7 @@ router.post(
     }
 
     try {
-      const result = await store.importItems(items);
+      const result = await store.importItems(req.datasetTag, items);
       res.json(result);
     } catch (err) {
       res.status(400).json({ error: err.message, details: err.details });
@@ -112,7 +112,7 @@ router.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     try {
-      const item = await store.addItem(req.body);
+      const item = await store.addItem(req.datasetTag, req.body);
       res.status(201).json(item);
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -125,7 +125,7 @@ router.put(
   requireAuth,
   asyncHandler(async (req, res) => {
     try {
-      const updated = await store.updateItem(req.params.id, req.body);
+      const updated = await store.updateItem(req.datasetTag, req.params.id, req.body);
       if (!updated) return res.status(404).json({ error: "Item not found" });
       res.json(updated);
     } catch (err) {
@@ -138,7 +138,7 @@ router.delete(
   "/items/:id",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const deleted = await store.deleteItem(req.params.id);
+    const deleted = await store.deleteItem(req.datasetTag, req.params.id);
     if (!deleted) return res.status(404).json({ error: "Item not found" });
     res.status(204).end();
   })
@@ -165,7 +165,7 @@ function withAttachments(item, attachments) {
 }
 
 function requireExistingItem(req, res, next) {
-  store.getItem(req.params.id).then((item) => {
+  store.getItem(req.datasetTag, req.params.id).then((item) => {
     if (!item) {
       req.resume(); // drain the still-uploading body before rejecting
       return res.status(404).json({ error: "Item not found" });
@@ -180,7 +180,7 @@ router.post(
   requireExistingItem,
   uploadSingleFile,
   asyncHandler(async (req, res) => {
-    const item = await store.getItem(req.params.id);
+    const item = await store.getItem(req.datasetTag, req.params.id);
     if (!req.file) {
       console.warn(`[timeline] File upload failed: no file provided for item ${req.params.id}`);
       return res.status(400).json({ error: "No file provided" });
@@ -197,7 +197,7 @@ router.post(
       kind: KIND_BY_MIME[req.file.mimetype],
     };
     const attachments = [...(item.detail?.attachments || []), attachment];
-    const updated = await store.updateItem(item.id, withAttachments(item, attachments));
+    const updated = await store.updateItem(req.datasetTag, item.id, withAttachments(item, attachments));
     res.status(201).json(updated);
   })
 );
@@ -206,14 +206,14 @@ router.delete(
   "/items/:id/attachments/:attachmentId",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const item = await store.getItem(req.params.id);
+    const item = await store.getItem(req.datasetTag, req.params.id);
     if (!item) {
       console.warn(`[timeline] File delete failed: item ${req.params.id} not found`);
       return res.status(404).json({ error: "Item not found" });
     }
 
     const attachments = (item.detail?.attachments || []).filter((a) => a.id !== req.params.attachmentId);
-    const updated = await store.updateItem(item.id, withAttachments(item, attachments));
+    const updated = await store.updateItem(req.datasetTag, item.id, withAttachments(item, attachments));
     res.json(updated);
   })
 );

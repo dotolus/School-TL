@@ -11,7 +11,7 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const { itemId, limit } = req.query;
-    const events = await historyStore.list({ itemId, limit: limit ? Number(limit) : undefined });
+    const events = await historyStore.list(req.datasetTag, { itemId, limit: limit ? Number(limit) : undefined });
     res.json({ events });
   })
 );
@@ -20,7 +20,7 @@ router.post(
   "/:eventId/restore",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const restored = await timelineStore.restoreFromHistory(req.params.eventId);
+    const restored = await timelineStore.restoreFromHistory(req.datasetTag, req.params.eventId);
     if (!restored) return res.status(404).json({ error: "Nothing to restore for that event" });
     res.json(restored);
   })

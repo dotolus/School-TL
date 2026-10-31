@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { useDatasetApi } from "../useDatasetApi";
 
 function formatTs(ts) {
   return new Date(ts).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" });
 }
 
 export function BackupPanel({ onRestored }) {
+  const api = useDatasetApi();
   const [backups, setBackups] = useState([]);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -18,7 +19,7 @@ export function BackupPanel({ onRestored }) {
       .catch((err) => setError(err.message));
   };
 
-  useEffect(load, []);
+  useEffect(load, [api]);
 
   const handleBackup = async () => {
     setBusy(true);

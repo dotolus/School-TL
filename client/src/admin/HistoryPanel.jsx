@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api";
+import { useDatasetApi } from "../useDatasetApi";
 
 const OP_LABEL = { create: "נוצר", update: "עודכן", delete: "נמחק", restore: "שוחזר" };
 const OP_COLOR = { create: "notice", update: "project", delete: "test", restore: "holiday" };
@@ -9,6 +9,7 @@ function formatTs(ts) {
 }
 
 export function HistoryPanel({ itemId, onRestored }) {
+  const api = useDatasetApi();
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -20,7 +21,7 @@ export function HistoryPanel({ itemId, onRestored }) {
       .catch((err) => setError(err.message));
   };
 
-  useEffect(load, [itemId]);
+  useEffect(load, [itemId, api]);
 
   const handleRestore = async (eventId) => {
     setBusyId(eventId);

@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
-import { api } from "../api";
+import { useDatasetApi } from "../useDatasetApi";
 
 export function ImportPanel({ onImported }) {
+  const api = useDatasetApi();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [details, setDetails] = useState(null);
