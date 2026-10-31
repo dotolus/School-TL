@@ -269,6 +269,14 @@ footer.note code{ background:var(--accent-soft); padding:1px 5px; border-radius:
 .theme-switcher button.active{ border-color:var(--accent); color:var(--accent); }
 .error-text{ color: var(--test); font-size:.85rem; }
 
+/* ---------- ציר זמן ריק (כתובת תקינה אך בלי נתונים) ---------- */
+.empty-dataset{
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 22px 24px; text-align: center;
+}
+.empty-dataset p{ margin: 0; }
+.empty-dataset p.meta{ color: var(--ink-soft); font-size: .88rem; margin-top: 10px; }
+
 /* ---------- 404: כתובת חלקית/שגויה ---------- */
 .not-found-page{
   min-height: 70vh;

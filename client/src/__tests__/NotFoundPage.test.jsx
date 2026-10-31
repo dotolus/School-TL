@@ -8,6 +8,7 @@ function renderAt(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
+        <Route path="/:school/:period/:class" element={<NotFoundPage />} />
         <Route path="/:school/:period" element={<NotFoundPage />} />
         <Route path="/:school" element={<NotFoundPage />} />
         <Route path="/" element={<NotFoundPage />} />
@@ -40,5 +41,11 @@ describe("NotFoundPage", () => {
   it("falls back to the same page for an unmatched path", () => {
     renderAt("/a/b/c/d/e");
     expect(screen.getByText("לא צוינו בית ספר, שנה וכיתה בכתובת")).toBeInTheDocument();
+  });
+
+  it("flags a swapped order when all three segments are present but the period slot doesn't look like a period", () => {
+    renderAt("/e4/reut/x");
+    expect(screen.getByText("סדר חלקי הכתובת כנראה הפוך")).toBeInTheDocument();
+    expect(screen.getByText("reut")).toBeInTheDocument();
   });
 });
