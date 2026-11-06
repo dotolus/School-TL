@@ -1,3 +1,13 @@
+// The admin login cookie is a signed, sliding-expiry cookie (see
+// server/services/adminToken.js) rather than a server-memory session, so
+// it can genuinely time out mid-visit. Every fetch call site below reports
+// a 401 the same way - by dispatching this event - so AdminPage.jsx can
+// react in one place (bounce back to the login form) instead of every
+// admin panel needing its own 401 handling.
+function reportIfUnauthorized(status) {
+  if (status === 401) window.dispatchEvent(new Event("admin-session-expired"));
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`/api${path}`, {
     credentials: "include",
@@ -5,6 +15,7 @@ async function request(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
+    reportIfUnauthorized(res.status);
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Request failed: ${res.status}`);
   }
@@ -41,6 +52,7 @@ export function createDatasetApi({ school, period, class: cls }) {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        reportIfUnauthorized(res.status);
         const err = new Error(body.error || `Request failed: ${res.status}`);
         err.details = body.details;
         throw err;
@@ -57,6 +69,7 @@ export function createDatasetApi({ school, period, class: cls }) {
         body: formData,
       });
       if (!res.ok) {
+        reportIfUnauthorized(res.status);
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Request failed: ${res.status}`);
       }

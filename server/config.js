@@ -16,6 +16,17 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   }
 }
 
+// The default below is public (it's in this file, in source control) and
+// signs the admin-session cookie (server/services/adminToken.js) - anyone
+// who knows it can forge a valid admin login. Fine for local dev; fatal in
+// production, so fail loudly at load time instead of silently accepting
+// forged admin cookies.
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "SESSION_SECRET must be set in production - it signs the admin-session cookie and the fallback default is public."
+  );
+}
+
 module.exports = {
   PORT: Number(process.env.PORT) || 4000,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "changeme",

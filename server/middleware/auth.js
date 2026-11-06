@@ -10,7 +10,15 @@ function parseCookies(header) {
     const idx = pair.indexOf("=");
     if (idx === -1) continue;
     const key = pair.slice(0, idx).trim();
-    if (key) cookies[key] = decodeURIComponent(pair.slice(idx + 1).trim());
+    if (!key) continue;
+    // A sibling cookie this server didn't set (another tool on the same
+    // domain, a stray browser extension) can carry an invalid %-escape.
+    // Skip just that one rather than letting it take down every request.
+    try {
+      cookies[key] = decodeURIComponent(pair.slice(idx + 1).trim());
+    } catch {
+      // leave this cookie out
+    }
   }
   return cookies;
 }

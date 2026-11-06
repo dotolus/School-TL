@@ -19,12 +19,27 @@ export function AdminPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState(null);
   const [historyItemId, setHistoryItemId] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     api
       .me()
       .then((data) => setIsAdmin(data.isAdmin))
       .catch(() => setIsAdmin(false));
+  }, []);
+
+  // The admin login is a sliding-expiry cookie (server/services/adminToken.js),
+  // not an indefinite session - api.js dispatches this event from every call
+  // site the moment any request comes back 401, so a session that times out
+  // mid-visit (e.g. a long-idle edit) bounces back to the login form instead
+  // of leaving a broken, silently-failing page on screen.
+  useEffect(() => {
+    const onSessionExpired = () => {
+      setIsAdmin(false);
+      setSessionExpired(true);
+    };
+    window.addEventListener("admin-session-expired", onSessionExpired);
+    return () => window.removeEventListener("admin-session-expired", onSessionExpired);
   }, []);
 
   const loadItems = useCallback(() => {
@@ -43,7 +58,13 @@ export function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="admin-page">
-        <LoginForm onLoggedIn={() => setIsAdmin(true)} />
+        <LoginForm
+          onLoggedIn={() => {
+            setSessionExpired(false);
+            setIsAdmin(true);
+          }}
+          message={sessionExpired ? "ההתחברות פגה מחוסר פעילות, יש להתחבר מחדש" : null}
+        />
       </div>
     );
   }
