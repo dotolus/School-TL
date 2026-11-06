@@ -140,6 +140,7 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
           value={form.words}
           onChange={update("words")}
           placeholder="cat-חתול, dog-כלב"
+          dir="auto"
         />
       </label>
       <label>
