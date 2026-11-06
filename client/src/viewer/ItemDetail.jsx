@@ -21,7 +21,7 @@ function WordListDownload({ words }) {
     return () => URL.revokeObjectURL(objectUrl);
   }, [words]);
   return (
-    <a href={url} download="רשימת-מילים.txt" className="btn secondary">
+    <a href={url} download="רשימת-מילים.txt" className="word-list-download">
       הורדת רשימת מילים
     </a>
   );
@@ -97,10 +97,10 @@ export function ItemDetail({ item }) {
             <dd>
               <div className="word-list">
                 {d.words.map((w, i) => (
-                  <span key={i}>{w}</span>
+                  <span key={i} dir="auto">{w}</span>
                 ))}
+                <WordListDownload words={d.words} />
               </div>
-              <WordListDownload words={d.words} />
             </dd>
           </>
         )}

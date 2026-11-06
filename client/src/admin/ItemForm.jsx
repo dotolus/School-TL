@@ -134,8 +134,14 @@ export function ItemForm({ initial, submitLabel, onSubmit, onCancel }) {
         <textarea rows={3} value={form.generalInfo} onChange={update("generalInfo")} />
       </label>
       <label>
-        רשימת מילים, מופרדות בפסיקים (אופציונלי)
-        <input type="text" value={form.words} onChange={update("words")} />
+        רשימת מילים: מילה באנגלית-פירוש, מופרדות בפסיקים (אופציונלי)
+        <input
+          type="text"
+          value={form.words}
+          onChange={update("words")}
+          placeholder="cat-חתול, dog-כלב"
+          dir="auto"
+        />
       </label>
       <label>
         קישורים, שורה לכל קישור: תווית|כתובת (הוסיפו ‎|ph‎ בסוף לקישור ממלא-מקום)
