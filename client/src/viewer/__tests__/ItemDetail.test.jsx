@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom";
+import { StrictMode } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
 import { ItemDetail } from "../ItemDetail";
@@ -116,6 +117,27 @@ describe("ItemDetail", () => {
     const bytes = new Uint8Array(await capturedBlob.arrayBuffer());
     expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
     expect(new TextDecoder().decode(bytes.slice(3))).toBe("a, b,");
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps a valid (non-revoked) download URL under StrictMode's dev double-invoke", () => {
+    let counter = 0;
+    const revoked = [];
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => `blob:mock-url-${++counter}`),
+      revokeObjectURL: vi.fn((u) => revoked.push(u)),
+    });
+
+    render(
+      <StrictMode>
+        <ItemDetail item={baseItem({ words: ["cat"] })} />
+      </StrictMode>
+    );
+
+    const link = screen.getByText("הורדת רשימת מילים");
+    const finalHref = link.getAttribute("href");
+    expect(revoked).not.toContain(finalHref);
     vi.unstubAllGlobals();
   });
 
