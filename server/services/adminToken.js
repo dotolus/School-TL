@@ -7,7 +7,23 @@ const { SESSION_SECRET } = require("../config");
 // there's no in-process store to lose, since the request itself carries
 // everything needed to verify it.
 
+// SESSION_SECRET's fallback (server/config.js) is public source, so a
+// production deployment that never set a real one would let anyone forge
+// an admin cookie. This check lives here - called lazily, only when a
+// token is actually signed or verified - rather than at config.js's
+// module-load time: config.js is required by every request, including
+// fully public ones, and must never be the reason the whole app goes
+// down over a setting only admin auth depends on.
+function assertSecretConfigured() {
+  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SESSION_SECRET must be set in production - it signs the admin-session cookie and the fallback default is public."
+    );
+  }
+}
+
 function hmac(body) {
+  assertSecretConfigured();
   return crypto.createHmac("sha256", SESSION_SECRET).update(body).digest("base64url");
 }
 
