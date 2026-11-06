@@ -1,7 +1,25 @@
+import { useEffect, useMemo } from "react";
 import { useAttachmentViewer } from "./AttachmentViewerProvider";
 import { useBlobUrl } from "./useBlobUrl";
 
 const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
+
+function wordsToTextFile(words) {
+  return words.map((w) => `${w},`).join("\n");
+}
+
+function WordListDownload({ words }) {
+  const url = useMemo(() => {
+    const bytes = new TextEncoder().encode("﻿" + wordsToTextFile(words));
+    return URL.createObjectURL(new Blob([bytes], { type: "text/plain;charset=utf-8" }));
+  }, [words]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <a href={url} download="רשימת-מילים.txt" className="btn secondary">
+      הורדת רשימת מילים
+    </a>
+  );
+}
 
 function AttachmentRow({ attachment: a, onPreview }) {
   const downloadUrl = useBlobUrl(a.url);
@@ -76,6 +94,7 @@ export function ItemDetail({ item }) {
                   <span key={i}>{w}</span>
                 ))}
               </div>
+              <WordListDownload words={d.words} />
             </dd>
           </>
         )}

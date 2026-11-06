@@ -46,6 +46,90 @@ describe("ItemDetail", () => {
     expect(screen.getByText("dog")).toBeInTheDocument();
   });
 
+  it("does not render a word-list download link when there are no words", () => {
+    render(<ItemDetail item={baseItem({})} />);
+    expect(screen.queryByText("הורדת רשימת מילים")).not.toBeInTheDocument();
+  });
+
+  it("renders a word-list download link with the expected filename and label", () => {
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL: vi.fn() });
+
+    render(<ItemDetail item={baseItem({ words: ["שלום", "עולם"] })} />);
+
+    const link = screen.getByText("הורדת רשימת מילים");
+    expect(link).toHaveAttribute("href", "blob:mock-url");
+    expect(link).toHaveAttribute("download", "רשימת-מילים.txt");
+    vi.unstubAllGlobals();
+  });
+
+  it("builds the word-list file as one word per line with a trailing comma, UTF-8 BOM included", async () => {
+    let capturedBlob;
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn((blob) => {
+        capturedBlob = blob;
+        return "blob:mock-url";
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<ItemDetail item={baseItem({ words: ["שלום", "עולם"] })} />);
+
+    const bytes = new Uint8Array(await capturedBlob.arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe("שלום,\nעולם,");
+    vi.unstubAllGlobals();
+  });
+
+  it("still appends a trailing comma for a single-word list", async () => {
+    let capturedBlob;
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn((blob) => {
+        capturedBlob = blob;
+        return "blob:mock-url";
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<ItemDetail item={baseItem({ words: ["cat"] })} />);
+
+    const bytes = new Uint8Array(await capturedBlob.arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe("cat,");
+    vi.unstubAllGlobals();
+  });
+
+  it("does not escape a word that itself contains a comma", async () => {
+    let capturedBlob;
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn((blob) => {
+        capturedBlob = blob;
+        return "blob:mock-url";
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<ItemDetail item={baseItem({ words: ["a, b"] })} />);
+
+    const bytes = new Uint8Array(await capturedBlob.arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe("a, b,");
+    vi.unstubAllGlobals();
+  });
+
+  it("revokes the word-list object URL on unmount", () => {
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL });
+
+    const { unmount } = render(<ItemDetail item={baseItem({ words: ["cat"] })} />);
+    unmount();
+
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+    vi.unstubAllGlobals();
+  });
+
   it("clicking an image thumbnail opens the viewer with its attachment info", () => {
     const open = vi.fn();
     vi.spyOn(AttachmentViewerProvider, "useAttachmentViewer").mockReturnValue({ open });
