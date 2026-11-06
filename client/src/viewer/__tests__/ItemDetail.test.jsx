@@ -47,10 +47,16 @@ describe("ItemDetail", () => {
     expect(screen.getByText("dog")).toBeInTheDocument();
   });
 
-  it("renders a word-meaning chip left-to-right so the Hebrew meaning doesn't get reordered before the English word", () => {
+  it("gives a word chip content-based bidi direction so an English-first word-meaning pair reads left-to-right", () => {
     render(<ItemDetail item={baseItem({ words: ["cat-חתול"] })} />);
     const chip = screen.getByText("cat-חתול");
-    expect(chip).toHaveAttribute("dir", "ltr");
+    expect(chip).toHaveAttribute("dir", "auto");
+  });
+
+  it("does not force a Hebrew-only chip with trailing punctuation into left-to-right order", () => {
+    render(<ItemDetail item={baseItem({ words: ["מה?"] })} />);
+    const chip = screen.getByText("מה?");
+    expect(chip).toHaveAttribute("dir", "auto");
   });
 
   it("places the word-list download link inside the same wrapping row as the word chips, not as an oversized block below", () => {

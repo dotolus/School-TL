@@ -97,7 +97,7 @@ export function ItemDetail({ item }) {
             <dd>
               <div className="word-list">
                 {d.words.map((w, i) => (
-                  <span key={i} dir="ltr">{w}</span>
+                  <span key={i} dir="auto">{w}</span>
                 ))}
                 <WordListDownload words={d.words} />
               </div>
