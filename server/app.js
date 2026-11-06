@@ -1,8 +1,7 @@
 const express = require("express");
-const session = require("express-session");
 const path = require("path");
 const fs = require("fs");
-const { SESSION_SECRET, CLIENT_DIST } = require("./config");
+const { CLIENT_DIST } = require("./config");
 const timelineRoutes = require("./routes/timeline.routes");
 const themesRoutes = require("./routes/themes.routes");
 const authRoutes = require("./routes/auth.routes");
@@ -15,14 +14,6 @@ const { attachDatasetTag } = require("./middleware/datasetTag");
 const app = express();
 
 app.use(express.json());
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax" },
-  })
-);
 
 app.use("/api/themes", themesRoutes);
 app.use("/api/auth", authRoutes);
