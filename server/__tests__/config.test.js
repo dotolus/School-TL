@@ -15,22 +15,14 @@ describe("config", () => {
     clearServerModuleCache();
   });
 
-  it("refuses to load when SESSION_SECRET is unset in production", () => {
+  // Regression test for a production incident: config.js is required by
+  // every request (including fully public ones, via app.js's top-level
+  // route requires), so it must never be the thing that takes the whole
+  // app down. A missing SESSION_SECRET only matters to admin auth - see
+  // server/services/adminToken.js, which is where that check now lives,
+  // and only runs when admin auth is actually exercised.
+  it("never throws just from loading config, even in production without SESSION_SECRET", () => {
     process.env.NODE_ENV = "production";
-    process.env.SESSION_SECRET = "";
-    clearServerModuleCache();
-    expect(() => require("../config")).toThrow(/SESSION_SECRET/);
-  });
-
-  it("loads fine in production once SESSION_SECRET is set", () => {
-    process.env.NODE_ENV = "production";
-    process.env.SESSION_SECRET = "a-real-secret";
-    clearServerModuleCache();
-    expect(() => require("../config")).not.toThrow();
-  });
-
-  it("does not require SESSION_SECRET outside production", () => {
-    delete process.env.NODE_ENV;
     process.env.SESSION_SECRET = "";
     clearServerModuleCache();
     expect(() => require("../config")).not.toThrow();

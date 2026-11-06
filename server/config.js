@@ -16,20 +16,16 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   }
 }
 
-// The default below is public (it's in this file, in source control) and
-// signs the admin-session cookie (server/services/adminToken.js) - anyone
-// who knows it can forge a valid admin login. Fine for local dev; fatal in
-// production, so fail loudly at load time instead of silently accepting
-// forged admin cookies.
-if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error(
-    "SESSION_SECRET must be set in production - it signs the admin-session cookie and the fallback default is public."
-  );
-}
-
 module.exports = {
   PORT: Number(process.env.PORT) || 4000,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "changeme",
+  // The fallback below is public (it's in this file, in source control) and
+  // signs the admin-session cookie (server/services/adminToken.js) - fine
+  // for local dev, but letting it slip into production would let anyone
+  // forge a valid admin login. That module - not this one - is what fails
+  // loudly if it's ever used in production without a real secret, since
+  // config.js is required by every request (including public ones) and
+  // must never be what takes the whole app down over an admin-only setting.
   SESSION_SECRET: process.env.SESSION_SECRET || "eq-ppt-dev-secret",
   // How long an admin stays logged in since their last authenticated
   // request (server/middleware/auth.js slides this window forward on every
