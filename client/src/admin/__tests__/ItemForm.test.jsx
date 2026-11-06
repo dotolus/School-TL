@@ -21,6 +21,12 @@ const existingItem = {
 };
 
 describe("ItemForm", () => {
+  it("shows the word-meaning format convention on the words field", () => {
+    render(<ItemForm initial={existingItem} submitLabel="שמירה" onSubmit={vi.fn()} />);
+    expect(screen.getByText(/מילה באנגלית-פירוש/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("cat-חתול, dog-כלב")).toBeInTheDocument();
+  });
+
   it("keeps an attachment uploaded during editing in the submitted payload", async () => {
     const uploaded = [{ id: "a1", url: "/uploads/notes.txt", filename: "notes.txt", kind: "text" }];
     mockApi.uploadItemAttachment.mockResolvedValue({ detail: { attachments: uploaded } });

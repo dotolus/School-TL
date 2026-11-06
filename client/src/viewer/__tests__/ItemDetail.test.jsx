@@ -47,6 +47,54 @@ describe("ItemDetail", () => {
     expect(screen.getByText("dog")).toBeInTheDocument();
   });
 
+  it("renders a word-meaning chip left-to-right so the Hebrew meaning doesn't get reordered before the English word", () => {
+    render(<ItemDetail item={baseItem({ words: ["cat-חתול"] })} />);
+    const chip = screen.getByText("cat-חתול");
+    expect(chip).toHaveAttribute("dir", "ltr");
+  });
+
+  it("places the word-list download link inside the same wrapping row as the word chips, not as an oversized block below", () => {
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL: vi.fn() });
+
+    render(<ItemDetail item={baseItem({ words: ["cat-חתול"] })} />);
+
+    const link = screen.getByText("הורדת רשימת מילים");
+    expect(link.closest(".word-list")).not.toBeNull();
+    expect(link.className).not.toMatch(/\bbtn\b/);
+    vi.unstubAllGlobals();
+  });
+
+  it("renders every chip plus the download link together for a multi-word list", () => {
+    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:mock-url"), revokeObjectURL: vi.fn() });
+
+    render(<ItemDetail item={baseItem({ words: ["cat-חתול", "dog-כלב", "bird-ציפור"] })} />);
+
+    expect(screen.getByText("cat-חתול")).toBeInTheDocument();
+    expect(screen.getByText("dog-כלב")).toBeInTheDocument();
+    expect(screen.getByText("bird-ציפור")).toBeInTheDocument();
+    expect(screen.getByText("הורדת רשימת מילים")).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("writes a hyphenated word-meaning pair to the exported file verbatim", async () => {
+    let capturedBlob;
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn((blob) => {
+        capturedBlob = blob;
+        return "blob:mock-url";
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+
+    render(<ItemDetail item={baseItem({ words: ["cat-חתול"] })} />);
+
+    const bytes = new Uint8Array(await capturedBlob.arrayBuffer());
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+    expect(new TextDecoder().decode(bytes.slice(3))).toBe("cat-חתול,");
+    vi.unstubAllGlobals();
+  });
+
   it("does not render a word-list download link when there are no words", () => {
     render(<ItemDetail item={baseItem({})} />);
     expect(screen.queryByText("הורדת רשימת מילים")).not.toBeInTheDocument();
