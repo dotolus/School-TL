@@ -1,7 +1,31 @@
+import { useEffect, useState } from "react";
 import { useAttachmentViewer } from "./AttachmentViewerProvider";
 import { useBlobUrl } from "./useBlobUrl";
 
 const ICON_BY_KIND = { pdf: "📄", text: "📝", zip: "🗜️" };
+
+function wordsToTextFile(words) {
+  return words.map((w) => `${w},`).join("\n");
+}
+
+function WordListDownload({ words }) {
+  const [url, setUrl] = useState(null);
+  // The object URL is created inside the effect (not via useMemo) so React
+  // 18 StrictMode's dev-only mount→cleanup→remount simulation creates and
+  // revokes its own URL each time it re-runs the effect, instead of revoking
+  // a memoized URL that the rendered <a> is still pointing at.
+  useEffect(() => {
+    const bytes = new TextEncoder().encode("﻿" + wordsToTextFile(words));
+    const objectUrl = URL.createObjectURL(new Blob([bytes], { type: "text/plain;charset=utf-8" }));
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [words]);
+  return (
+    <a href={url} download="רשימת-מילים.txt" className="btn secondary">
+      הורדת רשימת מילים
+    </a>
+  );
+}
 
 function AttachmentRow({ attachment: a, onPreview }) {
   const downloadUrl = useBlobUrl(a.url);
@@ -76,6 +100,7 @@ export function ItemDetail({ item }) {
                   <span key={i}>{w}</span>
                 ))}
               </div>
+              <WordListDownload words={d.words} />
             </dd>
           </>
         )}
