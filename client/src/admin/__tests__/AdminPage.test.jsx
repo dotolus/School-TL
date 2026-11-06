@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { vi } from "vitest";
 import { AdminPage } from "../AdminPage";
@@ -66,5 +66,19 @@ describe("AdminPage", () => {
     await waitFor(() => expect(screen.getByText(/some-other-school/)).toBeInTheDocument());
     expect(screen.getByText(/z9/)).toBeInTheDocument();
     expect(screen.getByText(/1999-2000/)).toBeInTheDocument();
+  });
+
+  it("falls back to the login form when a sliding admin session expires mid-visit", async () => {
+    api.me.mockResolvedValue({ isAdmin: true });
+    mockDatasetApi.getTimeline.mockResolvedValue({ items: [] });
+    mockDatasetApi.getBackups.mockResolvedValue({ backups: [] });
+    mockDatasetApi.getHistory.mockResolvedValue({ events: [] });
+
+    renderAt("/reut/2026-2027/e4/admin");
+    await waitFor(() => expect(screen.getByText(/reut/)).toBeInTheDocument());
+
+    act(() => window.dispatchEvent(new Event("admin-session-expired")));
+
+    await waitFor(() => expect(screen.getByText("התחברות לניהול")).toBeInTheDocument());
   });
 });

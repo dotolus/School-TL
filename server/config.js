@@ -16,10 +16,26 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
   }
 }
 
+// The default below is public (it's in this file, in source control) and
+// signs the admin-session cookie (server/services/adminToken.js) - anyone
+// who knows it can forge a valid admin login. Fine for local dev; fatal in
+// production, so fail loudly at load time instead of silently accepting
+// forged admin cookies.
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "SESSION_SECRET must be set in production - it signs the admin-session cookie and the fallback default is public."
+  );
+}
+
 module.exports = {
   PORT: Number(process.env.PORT) || 4000,
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "changeme",
   SESSION_SECRET: process.env.SESSION_SECRET || "eq-ppt-dev-secret",
+  // How long an admin stays logged in since their last authenticated
+  // request (server/middleware/auth.js slides this window forward on every
+  // one) before the signed session cookie (server/services/adminToken.js)
+  // stops verifying. Default 4 minutes.
+  ADMIN_SESSION_MAX_AGE_MS: Number(process.env.ADMIN_SESSION_MAX_AGE_MS) || 4 * 60 * 1000,
   DATA_DIR,
   THEMES_FILE: path.join(DATA_DIR, "themes.json"),
   CLIENT_DIST: path.join(__dirname, "..", "client", "dist"),

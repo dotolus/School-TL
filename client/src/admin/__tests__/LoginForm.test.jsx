@@ -31,4 +31,14 @@ describe("LoginForm", () => {
     await waitFor(() => expect(onLoggedIn).toHaveBeenCalledTimes(1));
     expect(api.login).toHaveBeenCalledWith("right");
   });
+
+  it("shows the given message, e.g. an expired-session notice, above the form", () => {
+    render(<LoginForm onLoggedIn={vi.fn()} message="ההתחברות פגה מחוסר פעילות, יש להתחבר מחדש" />);
+    expect(screen.getByText("ההתחברות פגה מחוסר פעילות, יש להתחבר מחדש")).toBeInTheDocument();
+  });
+
+  it("shows no notice when no message is given", () => {
+    render(<LoginForm onLoggedIn={vi.fn()} />);
+    expect(document.querySelector(".notice-text")).not.toBeInTheDocument();
+  });
 });

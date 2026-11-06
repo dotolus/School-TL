@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 
-export function LoginForm({ onLoggedIn }) {
+export function LoginForm({ onLoggedIn, message }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -23,6 +23,7 @@ export function LoginForm({ onLoggedIn }) {
   return (
     <div className="admin-card">
       <h2>התחברות לניהול</h2>
+      {message && <p className="notice-text">{message}</p>}
       <form className="admin-form" onSubmit={handleSubmit}>
         <label>
           סיסמה
