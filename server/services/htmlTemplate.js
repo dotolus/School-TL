@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { CLIENT_DIST } = require("../config");
+const { classLabelHe } = require("./classLabel");
 
 const ESCAPE_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 function escapeHtml(value) {
@@ -42,7 +43,7 @@ function buildMetaTags(req) {
     return { title: GENERIC_TITLE, description: GENERIC_DESCRIPTION, imageUrl, pageUrl };
   }
   const school = escapeHtml(slugs.school);
-  const cls = escapeHtml(slugs.class);
+  const cls = escapeHtml(classLabelHe(slugs.class));
   const period = escapeHtml(slugs.period);
   return {
     title: `${GENERIC_TITLE} – בית ספר ${school}, כיתה ${cls}`,
