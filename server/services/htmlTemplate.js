@@ -7,12 +7,20 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (ch) => ESCAPE_MAP[ch]);
 }
 
+function safeDecode(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 const DATASET_PATH_RE = /^\/([^/]+)\/([^/]+)\/([^/]+)(?:\/admin)?\/?$/;
 function parseDatasetSlugs(pathname) {
   const match = DATASET_PATH_RE.exec(pathname);
   if (!match) return null;
   const [, school, period, cls] = match;
-  return { school, period, class: cls };
+  return { school: safeDecode(school), period: safeDecode(period), class: safeDecode(cls) };
 }
 
 const GENERIC_TITLE = "ציר שנת הלימודים";

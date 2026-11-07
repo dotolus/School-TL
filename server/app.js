@@ -1,5 +1,4 @@
 const express = require("express");
-const path = require("path");
 const fs = require("fs");
 const { CLIENT_DIST } = require("./config");
 const timelineRoutes = require("./routes/timeline.routes");
@@ -11,8 +10,10 @@ const backupRoutes = require("./routes/backup.routes");
 const backupCronRoutes = require("./routes/backupCron.routes");
 const shortLinkRoutes = require("./routes/shortLink.routes");
 const { attachDatasetTag } = require("./middleware/datasetTag");
+const { renderIndexHtml } = require("./services/htmlTemplate");
 
 const app = express();
+app.set("trust proxy", true);
 
 app.use(express.json());
 
@@ -28,9 +29,13 @@ app.use("/api/:school/:period/:class/backup", attachDatasetTag, backupRoutes);
 app.use(shortLinkRoutes);
 
 if (fs.existsSync(CLIENT_DIST)) {
-  app.use(express.static(CLIENT_DIST));
+  // index: false - otherwise serve-static auto-serves index.html verbatim
+  // for any directory-style request (notably the bare "/"), bypassing
+  // renderIndexHtml()'s per-request substitution entirely.
+  app.use(express.static(CLIENT_DIST, { index: false }));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+    res.set("Content-Type", "text/html");
+    res.send(renderIndexHtml(req));
   });
 }
 
