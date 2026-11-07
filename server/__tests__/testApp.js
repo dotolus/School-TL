@@ -24,13 +24,16 @@ const SERVER_DIR = path.join(__dirname, "..");
 // block) regardless of whether the real client/dist has actually been
 // built - e.g. in CI's unit/integration job, which never runs `npm run
 // build` first.
+// Mirrors client/index.html's real default content (not placeholder
+// tokens) - server/services/htmlTemplate.js's renderIndexHtml() finds and
+// replaces these exact literal strings, see that file for why.
 const INDEX_HTML_FIXTURE = `<!doctype html><html><head>
-<title>__OG_TITLE__</title>
-<meta name="description" content="__OG_DESCRIPTION__" />
-<meta property="og:title" content="__OG_TITLE__" />
-<meta property="og:description" content="__OG_DESCRIPTION__" />
-<meta property="og:image" content="__OG_IMAGE__" />
-<meta property="og:url" content="__OG_URL__" />
+<title>ציר שנת הלימודים</title>
+<meta name="description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+<meta property="og:title" content="ציר שנת הלימודים" />
+<meta property="og:description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+<meta property="og:image" content="https://reutl.vercel.app/og-image.jpg" />
+<meta property="og:url" content="https://reutl.vercel.app/" />
 </head><body><div id="root"></div></body></html>`;
 
 function clearServerModuleCache() {

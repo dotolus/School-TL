@@ -3,18 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>__OG_TITLE__</title>
-    <meta name="description" content="__OG_DESCRIPTION__" />
+    <!--
+      These are real, correct generic defaults - NOT placeholder tokens.
+      server/services/htmlTemplate.js's renderIndexHtml() finds-and-replaces
+      these exact literal strings with per-request values when a page
+      request reaches Express. On Vercel, a request for "/" can resolve to
+      this file directly via static-file priority (bypassing Express
+      entirely) before a rewrite is ever considered - so this file's own
+      content must already be correct on its own, not require substitution
+      to avoid showing broken placeholder text. Keep these three values in
+      sync with GENERIC_TITLE/GENERIC_DESCRIPTION/DEFAULT_IMAGE_URL/
+      DEFAULT_PAGE_URL in htmlTemplate.js - a mismatch doesn't error, it
+      just silently stops dynamic substitution from happening.
+    -->
+    <title>ציר שנת הלימודים</title>
+    <meta name="description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="he_IL" />
-    <meta property="og:title" content="__OG_TITLE__" />
-    <meta property="og:description" content="__OG_DESCRIPTION__" />
-    <meta property="og:image" content="__OG_IMAGE__" />
-    <meta property="og:url" content="__OG_URL__" />
+    <meta property="og:title" content="ציר שנת הלימודים" />
+    <meta property="og:description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+    <meta property="og:image" content="https://reutl.vercel.app/og-image.jpg" />
+    <meta property="og:url" content="https://reutl.vercel.app/" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="__OG_TITLE__" />
-    <meta name="twitter:description" content="__OG_DESCRIPTION__" />
-    <meta name="twitter:image" content="__OG_IMAGE__" />
+    <meta name="twitter:title" content="ציר שנת הלימודים" />
+    <meta name="twitter:description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+    <meta name="twitter:image" content="https://reutl.vercel.app/og-image.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

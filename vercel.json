@@ -5,5 +5,10 @@
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/api" }
   ],
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "client/dist/**"
+    }
+  },
   "crons": [{ "path": "/api/backup/run", "schedule": "0 6 * * 0" }]
 }
