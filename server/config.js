@@ -34,7 +34,7 @@ module.exports = {
   ADMIN_SESSION_MAX_AGE_MS: Number(process.env.ADMIN_SESSION_MAX_AGE_MS) || 4 * 60 * 1000,
   DATA_DIR,
   THEMES_FILE: path.join(DATA_DIR, "themes.json"),
-  CLIENT_DIST: path.join(__dirname, "..", "client", "dist"),
+  CLIENT_DIST: process.env.CLIENT_DIST || path.join(__dirname, "..", "client", "dist"),
   SCHEDULER_CRON: process.env.SCHEDULER_CRON || "0 6 * * *",
 
   // Events live in a pluggable persistence layer (server/services/persistence/)
@@ -50,6 +50,13 @@ module.exports = {
   ACTIVE_SCHOOL: process.env.ACTIVE_SCHOOL || "reut",
   ACTIVE_CLASS: process.env.ACTIVE_CLASS || "e4",
   ACTIVE_PERIOD: process.env.ACTIVE_PERIOD || "2026-2027",
+
+  // Resolves the class for a class-less short viewer link
+  // (GET /:school/:period -> redirect to /:school/:period/:class, see
+  // server/routes/shortLink.routes.js). Purely cosmetic/marketing - a
+  // school missing here just means its short link won't redirect, not that
+  // anything breaks. `reut` is the only school live today.
+  DEFAULT_CLASS_BY_SCHOOL: { reut: "e4" },
 
   // Event images are uploaded to Cloudinary instead of local disk, for the
   // same reason - local disk doesn't survive a redeploy. If these are unset

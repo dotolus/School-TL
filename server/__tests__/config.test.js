@@ -27,4 +27,17 @@ describe("config", () => {
     clearServerModuleCache();
     expect(() => require("../config")).not.toThrow();
   });
+
+  it("exposes the default-class map used to resolve a class-less short link", () => {
+    const config = require("../config");
+    expect(config.DEFAULT_CLASS_BY_SCHOOL).toEqual({ reut: "e4" });
+  });
+
+  it("lets CLIENT_DIST be overridden by an env var (for test isolation)", () => {
+    process.env.CLIENT_DIST = "/tmp/fake-dist";
+    clearServerModuleCache();
+    const config = require("../config");
+    expect(config.CLIENT_DIST).toBe("/tmp/fake-dist");
+    delete process.env.CLIENT_DIST;
+  });
 });

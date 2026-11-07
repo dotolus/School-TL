@@ -19,6 +19,23 @@ const { applyEmulatorEnv } = require("./firestoreTestEnv");
 
 const SERVER_DIR = path.join(__dirname, "..");
 
+// Minimal static-site fixture so every integration test gets a working
+// static+catch-all branch (server/app.js's `if (fs.existsSync(CLIENT_DIST))`
+// block) regardless of whether the real client/dist has actually been
+// built - e.g. in CI's unit/integration job, which never runs `npm run
+// build` first.
+// Mirrors client/index.html's real default content (not placeholder
+// tokens) - server/services/htmlTemplate.js's renderIndexHtml() finds and
+// replaces these exact literal strings, see that file for why.
+const INDEX_HTML_FIXTURE = `<!doctype html><html><head>
+<title>ציר שנת הלימודים</title>
+<meta name="description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+<meta property="og:title" content="ציר שנת הלימודים" />
+<meta property="og:description" content="לוח אירועים, חגים ומבחנים לאורך שנת הלימודים" />
+<meta property="og:image" content="https://reutl.vercel.app/og-image.jpg" />
+<meta property="og:url" content="https://reutl.vercel.app/" />
+</head><body><div id="root"></div></body></html>`;
+
 function clearServerModuleCache() {
   for (const filename of Object.keys(require.cache)) {
     if (filename.startsWith(SERVER_DIR)) {
@@ -31,6 +48,10 @@ async function createTestApp() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "eq-ppt-app-"));
   applyEmulatorEnv();
   process.env.DATA_DIR = tmpDir;
+  fs.writeFileSync(path.join(tmpDir, "index.html"), INDEX_HTML_FIXTURE);
+  fs.mkdirSync(path.join(tmpDir, "assets"), { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, "assets", "app.js"), "console.log('fixture');");
+  process.env.CLIENT_DIST = tmpDir;
   process.env.ADMIN_PASSWORD = "test-password";
   process.env.ACTIVE_SCHOOL = `test-${crypto.randomUUID()}`;
   process.env.CRON_SECRET = "test-cron-secret";
@@ -48,6 +69,7 @@ async function createTestApp() {
 
 function cleanupTestApp(tmpDir) {
   delete process.env.DATA_DIR;
+  delete process.env.CLIENT_DIST;
   delete process.env.ADMIN_PASSWORD;
   delete process.env.ACTIVE_SCHOOL;
   delete process.env.CRON_SECRET;
