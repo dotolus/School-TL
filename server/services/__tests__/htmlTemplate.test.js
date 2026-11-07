@@ -48,6 +48,15 @@ describe("buildMetaTags", () => {
     expect(meta.description).not.toContain("<script>");
   });
 
+  it("translates the class code's grade letter to Hebrew while leaving the school name in English", () => {
+    const { buildMetaTags } = require("../htmlTemplate");
+    const meta = buildMetaTags(fakeReq("/reut/2026-2027/e4"));
+    expect(meta.title).toBe("ציר שנת הלימודים – בית ספר reut, כיתה ה4");
+    expect(meta.description).toBe(
+      "לוח האירועים, החגים והמבחנים של בית ספר reut, כיתה ה4, שנת הלימודים 2026-2027"
+    );
+  });
+
   it("builds the generic fallback for a non-dataset path", () => {
     const { buildMetaTags } = require("../htmlTemplate");
     const meta = buildMetaTags(fakeReq("/"));
@@ -103,7 +112,7 @@ describe("renderIndexHtml", () => {
     const html = renderIndexHtml({
       path: "/reut/2026-2027/e4", protocol: "https", get: () => "x.test", originalUrl: "/reut/2026-2027/e4",
     });
-    expect(html).toContain("ציר שנת הלימודים – בית ספר reut, כיתה e4");
+    expect(html).toContain("ציר שנת הלימודים – בית ספר reut, כיתה ה4");
     expect(html).toContain("https://x.test/og-image.jpg");
     delete process.env.CLIENT_DIST;
   });

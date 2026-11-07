@@ -11,15 +11,15 @@ describe("dynamic OG/meta tags on page requests", () => {
   it("renders dataset-scoped title/description for the viewer path", async () => {
     const res = await request(app).get("/reut/2026-2027/e4");
     expect(res.status).toBe(200);
-    expect(res.text).toContain("<title>ציר שנת הלימודים – בית ספר reut, כיתה e4</title>");
+    expect(res.text).toContain("<title>ציר שנת הלימודים – בית ספר reut, כיתה ה4</title>");
     expect(res.text).toContain(
-      'content="לוח האירועים, החגים והמבחנים של בית ספר reut, כיתה e4, שנת הלימודים 2026-2027"'
+      'content="לוח האירועים, החגים והמבחנים של בית ספר reut, כיתה ה4, שנת הלימודים 2026-2027"'
     );
   });
 
   it("renders the same dynamic meta for the admin path", async () => {
     const res = await request(app).get("/reut/2026-2027/e4/admin");
-    expect(res.text).toContain("בית ספר reut, כיתה e4");
+    expect(res.text).toContain("בית ספר reut, כיתה ה4");
   });
 
   it("renders the generic fallback for the bare root", async () => {
